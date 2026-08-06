@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Solum Demo — fail-closed authz &amp; tamper-evident audit</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --ink: #e8eef4;
+      --muted: #9aa8b5;
+      --line: #2c3a48;
+      --ok: #3d9a6a;
+      --ok-bg: rgba(61, 154, 106, 0.12);
+      --deny: #c45c5c;
+      --deny-bg: rgba(196, 92, 92, 0.14);
+      --warn: #c9a227;
+      --accent: #5b8def;
+      --mono: "SF Mono", "Menlo", "Consolas", ui-monospace, monospace;
+      --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      background:
+        radial-gradient(1200px 600px at 10% -10%, #1c2a3a 0%, transparent 55%),
+        radial-gradient(900px 500px at 100% 0%, #243018 0%, transparent 45%),
+        var(--bg);
+      color: var(--ink);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    main {
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 2rem 1.25rem 4rem;
+    }
+    header h1 {
+      font-size: clamp(1.6rem, 3vw, 2.2rem);
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.35rem;
+    }
+    header p { color: var(--muted); margin: 0 0 1.25rem; max-width: 46rem; }
+    .banner {
+      border: 1px solid var(--warn);
+      background: rgba(201, 162, 39, 0.1);
+      color: #e8d48a;
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1.75rem;
+      font-size: 0.95rem;
+    }
+    .grid {
+      display: grid;
+      gap: 1.25rem;
+      grid-template-columns: 1fr;
+    }
+    @media (min-width: 900px) {
+      .grid { grid-template-columns: 1.1fr 0.9fr; align-items: start; }
+    }
+    section.panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 1.25rem 1.35rem 1.4rem;
+    }
+    section h2 {
+      margin: 0 0 0.4rem;
+      font-size: 1.15rem;
+      font-weight: 600;
+    }
+    section .lead { color: var(--muted); margin: 0 0 1rem; font-size: 0.95rem; }
+    .patient {
+      font-family: var(--mono);
+      font-size: 0.85rem;
+      background: #121820;
+      border: 1px dashed var(--line);
+      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      margin-bottom: 1rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .actions { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.85rem; }
+    button {
+      appearance: none;
+      border: 1px solid var(--line);
+      background: #243040;
+      color: var(--ink);
+      font: inherit;
+      font-size: 0.92rem;
+      padding: 0.55rem 0.9rem;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { border-color: var(--accent); }
+    button:disabled { opacity: 0.5; cursor: wait; }
+    button.primary { background: #2a4a7a; border-color: #3d6eb0; }
+    button.danger { background: #4a2a2a; border-color: #8a4545; }
+    button.ghost { background: transparent; }
+    .result {
+      font-family: var(--mono);
+      font-size: 0.8rem;
+      padding: 0.75rem 0.9rem;
+      border-radius: 6px;
+      border: 1px solid var(--line);
+      background: #121820;
+      min-height: 3.2rem;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .result.ok { border-color: var(--ok); background: var(--ok-bg); }
+    .result.deny { border-color: var(--deny); background: var(--deny-bg); }
+    .result.warn { border-color: var(--warn); background: rgba(201, 162, 39, 0.12); }
+    .meta {
+      display: flex; flex-wrap: wrap; gap: 0.75rem;
+      align-items: center; margin: 0 0 0.75rem;
+      color: var(--muted); font-size: 0.85rem;
+    }
+    .dot {
+      width: 0.55rem; height: 0.55rem; border-radius: 50%;
+      background: var(--muted); display: inline-block;
+    }
+    .dot.live { background: var(--ok); box-shadow: 0 0 0 3px rgba(61,154,106,0.25); }
+    .audit {
+      max-height: 28rem;
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      background: #121820;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      padding: 0.5rem;
+    }
+    .audit-entry {
+      border-bottom: 1px solid #1e2833;
+      padding: 0.55rem 0.45rem;
+    }
+    .audit-entry:last-child { border-bottom: 0; }
+    .audit-entry.denied { background: var(--deny-bg); }
+    .audit-entry .etype { color: var(--accent); font-weight: 600; }
+    .audit-entry.denied .etype { color: #e08888; }
+    .audit-empty { color: var(--muted); padding: 0.75rem; }
+    footer {
+      margin-top: 1.75rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    footer code { font-family: var(--mono); font-size: 0.8rem; }
+    .sep { height: 1px; background: var(--line); margin: 1.1rem 0; }
+    .harness-note {
+      font-size: 0.82rem;
+      color: var(--warn);
+      margin: 0 0 0.85rem;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Solum interactive demo</h1>
+      <p>
+        Two local scenarios against a real <code>solum-sidecar</code> binary,
+        built from the pinned Solum tag
+        <code>stage1-baseline-sidecar-custody-2026-08-01</code>.
+        Fail-closed authorization and a tamper-evident audit chain — on your machine.
+      </p>
+    </header>
+
+    <div class="banner" role="note">
+      Local demo with ephemeral test keys only — not a production environment.
+      Real deployments use CustomerHeld / AWS-KMS custody; see Solum’s
+      <code>SECURITY-OVERVIEW.md</code>.
+    </div>
+
+    <div class="grid">
+      <div>
+        <section class="panel" aria-labelledby="s1">
+          <h2 id="s1">Scenario 1 — Fail-closed authorization</h2>
+          <p class="lead">
+            Both roles attempt to encrypt the same patient summary.
+            Only the physician holds <code>solum:crypto:encrypt</code>.
+            The intern is denied with HTTP 403; the refusal appears in the live audit log as
+            <code>authorization.denied</code>.
+          </p>
+          <div class="patient" id="patient-summary">Loading sample…</div>
+          <div class="actions">
+            <button class="primary" id="btn-amina" type="button">
+              Encrypt as Dr. Amina<br />
+              <small style="opacity:.8">has solum:crypto:encrypt</small>
+            </button>
+            <button class="danger" id="btn-intern" type="button">
+              Encrypt as Intern<br />
+              <small style="opacity:.8">has no capability</small>
+            </button>
+          </div>
+          <div class="result" id="s1-result" aria-live="polite">Waiting for an encrypt attempt…</div>
+        </section>
+
+        <div style="height:1.25rem"></div>
+
+        <section class="panel" aria-labelledby="s2">
+          <h2 id="s2">Scenario 2 — Tamper-evident audit trail</h2>
+          <p class="lead">
+            “Simulate tampering” rewrites <code>audit.jsonl</code> on the filesystem
+            via the <strong>demo harness</strong> — not via the sidecar API
+            (Solum has no tamper endpoint by design). Then verify the chain.
+          </p>
+          <p class="harness-note">
+            DEMO HARNESS ONLY — <code>POST /demo/simulate-tampering</code> lives in this
+            Solum-Demo repo, never in Solum itself.
+          </p>
+          <div class="actions">
+            <button class="danger" id="btn-tamper" type="button">Simulate tampering</button>
+            <button class="primary" id="btn-verify" type="button">Verify audit chain</button>
+            <button class="ghost" id="btn-refresh" type="button">Refresh audit log</button>
+          </div>
+          <div class="result" id="s2-result" aria-live="polite">Chain not verified yet…</div>
+        </section>
+      </div>
+
+      <section class="panel" aria-labelledby="audit-h">
+        <h2 id="audit-h">Live audit log</h2>
+        <div class="meta">
+          <span><span class="dot" id="live-dot"></span> polling <code>/v1/audit/export</code></span>
+          <span id="audit-count">0 records</span>
+        </div>
+        <div class="audit" id="audit-log"><div class="audit-empty">No events yet — run Scenario 1.</div></div>
+      </section>
+    </div>
+
+    <footer>
+      Token header <code>X-Solum-Sidecar-Token</code> is sent only to the local nginx
+      proxy on this machine. Source: <code>SynapticFour/Solum-Demo</code> · consumes
+      Solum tag <code>stage1-baseline-sidecar-custody-2026-08-01</code>.
+    </footer>
+  </main>
+
+  <script>
+    // Local demo only — same default as docker-compose.yml. Not a production secret.
+    const TOKEN = "solum-demo-local-token-not-for-production";
+    const TOKEN_HEADER = "X-Solum-Sidecar-Token";
+
+    const PATIENT_SUMMARY = {
+      resourceType: "Patient",
+      id: "demo-42",
+      name: [{ family: "Wanjiku", given: ["Grace"] }],
+      birthDate: "1987-04-12",
+      note: "Synthetic demo data — not a real patient.",
+    };
+
+    const PLAIN_B64 = btoa(unescape(encodeURIComponent(JSON.stringify(PATIENT_SUMMARY))));
+
+    document.getElementById("patient-summary").textContent =
+      JSON.stringify(PATIENT_SUMMARY, null, 2);
+
+    function setResult(el, text, kind) {
+      el.textContent = text;
+      el.classList.remove("ok", "deny", "warn");
+      if (kind) el.classList.add(kind);
+    }
+
+    async function encryptAs(actor, capabilities) {
+      const res = await fetch("/v1/crypto/encrypt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [TOKEN_HEADER]: TOKEN,
+        },
+        body: JSON.stringify({
+          category: "patient_summary",
+          key_ref: "ephemeral/demo-patient-summary",
+          actor,
+          capability: capabilities,
+          plaintext_base64: PLAIN_B64,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
+    }
+
+    async function onEncrypt(actor, caps, label) {
+      const out = document.getElementById("s1-result");
+      setResult(out, `Calling /v1/crypto/encrypt as ${label}…`);
+      try {
+        const { status, body } = await encryptAs(actor, caps);
+        if (status === 200) {
+          const fieldPreview = body.field
+            ? JSON.stringify(body.field).slice(0, 180) + "…"
+            : "(no field)";
+          setResult(
+            out,
+            `HTTP ${status} OK — encryption succeeded for ${label}.\n` +
+              `field (truncated): ${fieldPreview}\n` +
+              (body.warning ? `\nwarning: ${body.warning}` : ""),
+            "ok"
+          );
+        } else if (status === 403) {
+          setResult(
+            out,
+            `HTTP ${status} FORBIDDEN — fail-closed denial for ${label}.\n` +
+              `error: ${body.error || "?"}\n` +
+              `message: ${body.message || JSON.stringify(body)}\n` +
+              `Watch the live audit log for authorization.denied.`,
+            "deny"
+          );
+        } else {
+          setResult(
+            out,
+            `HTTP ${status}\n${JSON.stringify(body, null, 2)}`,
+            "warn"
+          );
+        }
+        await refreshAudit();
+      } catch (err) {
+        setResult(out, `Request failed: ${err}`, "warn");
+      }
+    }
+
+    document.getElementById("btn-amina").addEventListener("click", () =>
+      onEncrypt("practitioner/amina", ["solum:crypto:encrypt"], "Dr. Amina")
+    );
+    document.getElementById("btn-intern").addEventListener("click", () =>
+      onEncrypt("practitioner/intern", [], "Intern (no capability)")
+    );
+
+    document.getElementById("btn-tamper").addEventListener("click", async () => {
+      const out = document.getElementById("s2-result");
+      setResult(out, "Demo harness rewriting audit.jsonl on disk…");
+      try {
+        const res = await fetch("/demo/simulate-tampering", { method: "POST" });
+        const body = await res.json();
+        setResult(
+          out,
+          `Harness HTTP ${res.status}\n${JSON.stringify(body, null, 2)}`,
+          body.ok ? "warn" : "deny"
+        );
+        await refreshAudit();
+      } catch (err) {
+        setResult(out, `Tamper harness failed: ${err}`, "deny");
+      }
+    });
+
+    document.getElementById("btn-verify").addEventListener("click", async () => {
+      const out = document.getElementById("s2-result");
+      setResult(out, "GET /v1/audit/verify …");
+      try {
+        const res = await fetch("/v1/audit/verify", {
+          headers: { [TOKEN_HEADER]: TOKEN },
+        });
+        const body = await res.json();
+        if (res.status === 200 && body.status === "ok") {
+          setResult(out, `HTTP ${res.status}\n${JSON.stringify(body, null, 2)}\nChain intact.`, "ok");
+        } else {
+          setResult(
+            out,
+            `HTTP ${res.status} — chain broken / verify failed\n` +
+              `error: ${body.error || "?"}\n` +
+              `message: ${body.message || JSON.stringify(body)}`,
+            "deny"
+          );
+        }
+      } catch (err) {
+        setResult(out, `Verify failed: ${err}`, "warn");
+      }
+    });
+
+    document.getElementById("btn-refresh").addEventListener("click", () => refreshAudit());
+
+    function renderAudit(envelope) {
+      const box = document.getElementById("audit-log");
+      const records = (envelope && envelope.records) || [];
+      document.getElementById("audit-count").textContent =
+        `${records.length} record${records.length === 1 ? "" : "s"}`;
+      if (!records.length) {
+        box.innerHTML = '<div class="audit-empty">No events yet — run Scenario 1.</div>';
+        return;
+      }
+      // Newest first for the live view.
+      const ordered = [...records].reverse();
+      box.innerHTML = ordered
+        .map((rec) => {
+          const ev = rec.event || {};
+          const denied = ev.event_type === "authorization.denied" || ev.outcome === "denied";
+          return (
+            `<div class="audit-entry${denied ? " denied" : ""}">` +
+            `<div><span class="etype">${escapeHtml(ev.event_type || "?")}</span>` +
+            ` · seq ${rec.seq} · ${escapeHtml(ev.outcome || "")}</div>` +
+            `<div>actor: ${escapeHtml(ev.actor || "")}</div>` +
+            `<div>${escapeHtml(ev.timestamp || "")}` +
+            (ev.data_category ? ` · ${escapeHtml(ev.data_category)}` : "") +
+            `</div>` +
+            `</div>`
+          );
+        })
+        .join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+
+    async function refreshAudit() {
+      const dot = document.getElementById("live-dot");
+      try {
+        const res = await fetch("/v1/audit/export", {
+          headers: { [TOKEN_HEADER]: TOKEN },
+        });
+        if (!res.ok) {
+          const t = await res.text();
+          throw new Error(`HTTP ${res.status}: ${t.slice(0, 200)}`);
+        }
+        const envelope = await res.json();
+        renderAudit(envelope);
+        dot.classList.add("live");
+      } catch (err) {
+        dot.classList.remove("live");
+        document.getElementById("audit-log").innerHTML =
+          `<div class="audit-empty">Audit poll error: ${escapeHtml(err)}</div>`;
+      }
+    }
+
+    refreshAudit();
+    setInterval(refreshAudit, 2000);
+  </script>
+</body>
+</html>
