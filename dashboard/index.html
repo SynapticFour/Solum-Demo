@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Solum Demo — fail-closed authz &amp; tamper-evident audit</title>
+  <title>Solum Demo — authz, audit &amp; consent</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -164,10 +164,12 @@
     <header>
       <h1>Solum interactive demo</h1>
       <p>
-        Two local scenarios against a real <code>solum-sidecar</code> binary,
+        Three local scenarios against a real <code>solum-sidecar</code> binary,
         built from the pinned Solum tag
-        <code>stage1-baseline-sidecar-custody-2026-08-01</code>.
-        Fail-closed authorization and a tamper-evident audit chain — on your machine.
+        <code>stage1-baseline-sidecar-custody-2026-08-01</code>
+        (see <code>PINNED_VERSIONS.txt</code>).
+        Fail-closed authorization, tamper-evident audit, and consent grant/revoke — on your machine.
+        Track B / H3 CDR uses a separate stack (<code>make up-h3</code>).
       </p>
     </header>
 
@@ -220,6 +222,25 @@
             <button class="ghost" id="btn-refresh" type="button">Refresh audit log</button>
           </div>
           <div class="result" id="s2-result" aria-live="polite">Chain not verified yet…</div>
+        </section>
+
+        <div style="height:1.25rem"></div>
+
+        <section class="panel" aria-labelledby="s3">
+          <h2 id="s3">Scenario 3 — Consent grant / status / revoke</h2>
+          <p class="lead">
+            Grant purpose-bound consent for a synthetic subject, poll status, then revoke.
+            Same HTTP surface as <code>make smoke-consent</code>.
+          </p>
+          <div class="patient" id="consent-subject">subject: patient/demo-ui
+purpose: care_provision
+scope: ["patient_summary"]</div>
+          <div class="actions">
+            <button class="primary" id="btn-consent-grant" type="button">Grant consent</button>
+            <button class="ghost" id="btn-consent-status" type="button">Check status</button>
+            <button class="danger" id="btn-consent-revoke" type="button">Revoke consent</button>
+          </div>
+          <div class="result" id="s3-result" aria-live="polite">Waiting for a consent action…</div>
         </section>
       </div>
 
@@ -370,6 +391,82 @@
     });
 
     document.getElementById("btn-refresh").addEventListener("click", () => refreshAudit());
+
+    const CONSENT_SUBJECT = "patient/demo-ui";
+    const CONSENT_PURPOSE = "care_provision";
+
+    async function consentCall(method, path, body) {
+      const opts = {
+        method,
+        headers: {
+          [TOKEN_HEADER]: TOKEN,
+          "Content-Type": "application/json",
+        },
+      };
+      if (body !== undefined) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      const text = await res.text();
+      let parsed = {};
+      try { parsed = text ? JSON.parse(text) : {}; } catch (_) { parsed = { raw: text }; }
+      return { status: res.status, body: parsed };
+    }
+
+    document.getElementById("btn-consent-grant").addEventListener("click", async () => {
+      const out = document.getElementById("s3-result");
+      setResult(out, "POST /v1/consent/grant …");
+      try {
+        const { status, body } = await consentCall("POST", "/v1/consent/grant", {
+          actor: "practitioner/amina",
+          capability: ["solum:consent:grant"],
+          subject: CONSENT_SUBJECT,
+          purpose: CONSENT_PURPOSE,
+          scope: ["patient_summary"],
+        });
+        setResult(
+          out,
+          `HTTP ${status}\n${JSON.stringify(body, null, 2)}`,
+          status === 200 || status === 201 ? "ok" : "deny"
+        );
+        await refreshAudit();
+      } catch (err) {
+        setResult(out, `Grant failed: ${err}`, "warn");
+      }
+    });
+
+    document.getElementById("btn-consent-status").addEventListener("click", async () => {
+      const out = document.getElementById("s3-result");
+      const q = `subject=${encodeURIComponent(CONSENT_SUBJECT)}&purpose=${encodeURIComponent(CONSENT_PURPOSE)}`;
+      setResult(out, `GET /v1/consent/status?${q} …`);
+      try {
+        const { status, body } = await consentCall("GET", `/v1/consent/status?${q}`);
+        const st = (body && body.status) || "?";
+        const kind = st === "granted" ? "ok" : st === "revoked" || st === "unknown" ? "warn" : "deny";
+        setResult(out, `HTTP ${status}\n${JSON.stringify(body, null, 2)}`, kind);
+      } catch (err) {
+        setResult(out, `Status failed: ${err}`, "warn");
+      }
+    });
+
+    document.getElementById("btn-consent-revoke").addEventListener("click", async () => {
+      const out = document.getElementById("s3-result");
+      setResult(out, "POST /v1/consent/revoke …");
+      try {
+        const { status, body } = await consentCall("POST", "/v1/consent/revoke", {
+          actor: "practitioner/amina",
+          capability: ["solum:consent:revoke"],
+          subject: CONSENT_SUBJECT,
+          purpose: CONSENT_PURPOSE,
+        });
+        setResult(
+          out,
+          `HTTP ${status}\n${JSON.stringify(body, null, 2)}`,
+          status === 200 || status === 201 ? "ok" : "deny"
+        );
+        await refreshAudit();
+      } catch (err) {
+        setResult(out, `Revoke failed: ${err}`, "warn");
+      }
+    });
 
     function renderAudit(envelope) {
       const box = document.getElementById("audit-log");

@@ -1,22 +1,10 @@
 # Solum Demo
 
-Interactive **local** demo of [Solum](https://github.com/SynapticFour/Solum)’s two Stage‑1 proofs that matter under regulatory pressure: **fail-closed authorization** and a **tamper-evident audit trail**.
+Interactive **local** demo of [Solum](https://github.com/SynapticFour/Solum) Stage‑1 proofs (**fail-closed authorization**, **tamper-evident audit**) plus **automated smokes** for consent and optional H3 Track B / jurisdiction profiles.
 
-This repository is **not** Solum. It consumes Solum only at the verified tag
+Coverage map (what this repo vs Showcase/Solum owns): [`docs/COVERAGE.md`](docs/COVERAGE.md).
 
-`stage1-baseline-sidecar-custody-2026-08-01`
-
-and never modifies the Solum product tree.
-
-> **This is a local demo with ephemeral test keys — not a production environment.**
-
----
-
-## Why this exists
-
-Health-software vendors under **EHDS** (EU) and jurisdictions such as **Kenya’s DPA / SHA accreditation pressure** face the same compliance core: prove who could (and could not) touch clinical data, and prove the access log was not quietly rewritten afterward. Solum’s pilot framing starts from that shared denominator (see Solum’s `docs/PILOT-STRATEGY.md`): audit integrity, field encryption with accountable key custody, and FHIR-shaped interoperability.
-
-This demo lets a visitor **feel** the first two on a laptop — without a cloud account and without shipping real patient data.
+> **Local demo with ephemeral test keys — not a production environment.**
 
 ---
 
@@ -25,72 +13,90 @@ This demo lets a visitor **feel** the first two on a laptop — without a cloud 
 ```bash
 git clone https://github.com/SynapticFour/Solum-Demo.git
 cd Solum-Demo
-docker compose up --build
+make up          # or: docker compose up --build -d
+# open http://localhost:8080
+make smoke-stage1
+make smoke-consent
 ```
 
-Then open **http://localhost:8080**
-
-First build compiles `solum-sidecar` from the pinned Solum tag (Rust + libsodium inside Docker). Expect several minutes on a cold cache; later starts are much faster.
-
-Stop with `Ctrl+C`, or `docker compose down`. Reset demo state (empty audit/consent files):
+If `:8080` is taken (e.g. Ferrum gateway), use another host port:
 
 ```bash
-docker compose down -v
+SOLUM_DEMO_PORT=8088 make up
+SOLUM_DEMO_PORT=8088 make smoke-stage1 smoke-consent
+```
+
+Cold build compiles `solum-sidecar` from the pinned Solum tag (Rust + libsodium). Expect several minutes once.
+
+```bash
+make down        # stop
+make reset       # wipe volumes
 ```
 
 ---
 
-## What you will see
+## Verifiable smokes (`make`)
+
+| Target | Proves | Needs |
+|--------|--------|-------|
+| `smoke-stage1` | Encrypt allow/deny + audit chain break | `make up` |
+| `smoke-consent` | Consent grant → status → revoke | `make up` |
+| `smoke-h3` | CDR template/EHR/composition, FHIR Patient, subject-link, dual-write, AQL | `make up-h3` (soft-skip if down) |
+| `smoke-profile` | `kenya-dpa` / `eu-ehds` residency refuse | sibling `../Solum` (soft-skip) |
+| `smoke-all` | All of the above | — |
+
+Ecosystem integrations **not** in this repo (Showcase):
+
+- Ferrum consent teeth: `make h21-teeth` in SynapticFour-Showcase  
+- Path E+ live soft smoke: `make path-eplus-smoke`  
+- Evidence Pack / golden path with Solum: `make golden-path-with-solum`
+
+---
+
+## Interactive UI (Stage-1)
 
 ### Scenario 1 — Fail-closed authorization
 
-1. Read the synthetic patient summary on the left.
-2. Click **Encrypt as Dr. Amina** (capability `solum:crypto:encrypt`) — encryption succeeds (HTTP 200).
-3. Click **Encrypt as Intern** (empty capability list) — Solum returns **HTTP 403**; no ciphertext side effect.
-4. Watch the **Live audit log**: the intern’s refusal appears as an `authorization.denied` event without reloading the page.
-
-## Screenshot hier
-
-*(Platzhalter — echtes Screenshot nachträglich einfügen: Dr. Amina Erfolg + Intern 403 + `authorization.denied` im Live-Log.)*
+Encrypt as Dr. Amina (`solum:crypto:encrypt` → 200) vs Intern (empty caps → 403 + `authorization.denied`).
 
 ### Scenario 2 — Tamper-evident audit trail
 
-1. After Scenario 1 has written at least one audit record, click **Simulate tampering**.
-2. That call hits the **demo harness** (`POST /demo/simulate-tampering`), which rewrites `audit.jsonl` **directly on the shared volume**. It does **not** go through the sidecar API — Solum has **no** tamper endpoint by design (adding one would be a security anti-feature).
-3. Click **Verify audit chain** — the dashboard calls Solum’s real `GET /v1/audit/verify` and surfaces the `chain_broken` error (`audit chain broken at seq …`).
+Harness mutates `audit.jsonl` on disk → `GET /v1/audit/verify` → `chain_broken`.
 
-## Screenshot hier
+### Scenario 3 — Consent grant / status / revoke
 
-*(Platzhalter — echtes Screenshot nachträglich einfügen: Harness-Tamper-Antwort + Verify mit `error: chain_broken`.)*
+UI buttons mirror `make smoke-consent` (`POST /v1/consent/grant` → status → revoke).
 
 ---
 
-## Architecture (local only)
+## Architecture
 
 | Piece | Role |
 |-------|------|
-| `sidecar` | Multi-stage Docker image: clones Solum at the pinned tag, `cargo build --release -p solum-sidecar`, runs with `--ephemeral` |
-| `dashboard` | nginx serves one buildless HTML/JS page and reverse-proxies `/v1/*` → sidecar |
-| `demo-harness` | **Demo-only** Python service that mutates `audit.jsonl` on disk — **not part of Solum** |
+| `sidecar` | Pinned Solum tag, `--ephemeral`, `dev-local.toml` |
+| `dashboard` | nginx :8080 → UI + `/v1` + `/demo` |
+| `demo-harness` | Demo-only audit tamper (**not** Solum) |
 
-Shared volume: `/data/audit.jsonl` + `/data/consent.jsonl`.
+Default token: `solum-demo-local-token-not-for-production` (`X-Solum-Sidecar-Token`).
 
-Default shared secret (local compose only): `solum-demo-local-token-not-for-production`, sent as header `X-Solum-Sidecar-Token`. Safe only because everything binds on your machine behind localhost:8080.
+### H3 EHRbase overlay (Track B)
 
-### Ephemeral keys — intentional demo simplification
-
-Compose starts the sidecar with `--ephemeral`, `SOLUM_ALLOW_EPHEMERAL=1`, and Solum’s `dev-local.toml` profile from the same pinned tag.
-
-**This demo uses ephemeral test keys.** They live only in process memory and vanish on restart — convenient and easy to reset, and **not** how you run a real evaluation or production system. Real deployments use **CustomerHeld** (`--keys-dir`) or **AWS-KMS** (library path today). Read Solum’s [`docs/customer/SECURITY-OVERVIEW.md`](https://github.com/SynapticFour/Solum/blob/stage1-baseline-sidecar-custody-2026-08-01/docs/customer/SECURITY-OVERVIEW.md) and [`SIDECAR-INTEGRATION.md`](https://github.com/SynapticFour/Solum/blob/stage1-baseline-sidecar-custody-2026-08-01/docs/customer/SIDECAR-INTEGRATION.md).
-
-### Demo harness vs product boundary
-
-```
-demo-harness/     ← Solum-Demo only (filesystem rewrite)
-solum-sidecar     ← product binary from SynapticFour/Solum @ pinned tag
+```bash
+make up-h3       # EHRbase :8081 + sidecar-h3 :8787 from ../Solum
+make smoke-h3
+make down-h3
 ```
 
-Never copy `demo-harness/` into the Solum repository.
+Honesty: hub-class JVM EHRbase; not Pi; not a production EHR. See Solum [`docs/H3-EHRBASE-SPIKE.md`](https://github.com/SynapticFour/Solum/blob/main/docs/H3-EHRBASE-SPIKE.md).
+
+**Two build sources (do not confuse):**
+
+| Stack | Pin / source | File |
+|-------|----------------|------|
+| Stage-1 dashboard + `smoke-stage1` / `smoke-consent` | Solum git tag `stage1-baseline-sidecar-custody-2026-08-01` | `Dockerfile` · [`PINNED_VERSIONS.txt`](PINNED_VERSIONS.txt) |
+| H3 Track B + `smoke-h3` | Local sibling `../Solum` (current tree) | `docker-compose.ehrbase-sidecar.yml` |
+
+After pulling Solum, rebuild H3 with `make down-h3 && make up-h3`.
 
 ---
 
@@ -98,31 +104,21 @@ Never copy `demo-harness/` into the Solum repository.
 
 ```
 Solum-Demo/
-├── README.md
-├── Dockerfile                 # builds sidecar from pinned Solum tag
+├── Makefile
+├── PINNED_VERSIONS.txt
+├── docs/COVERAGE.md
+├── scripts/smoke-*.sh
+├── .github/workflows/   # smoke-syntax + smoke-stage1 (live Docker)
 ├── docker-compose.yml
-├── dashboard/
-│   └── index.html             # single-page demo UI (no npm)
-├── demo-harness/              # DEMO ONLY — not Solum
-│   ├── Dockerfile
-│   ├── README.md
-│   └── server.py
-└── nginx/
-    └── default.conf           # / → UI, /v1 → sidecar, /demo → harness
+├── docker-compose.ehrbase.yml
+├── docker-compose.ehrbase-sidecar.yml
+├── Dockerfile                 # Stage-1 pin
+├── dashboard/  demo-harness/  nginx/
 ```
-
----
-
-## Requirements
-
-- Docker with Compose v2
-- Network on first build (clones public `SynapticFour/Solum` + fetches `ferrum-core`)
 
 ---
 
 ## License / contact
 
-Demo scaffolding in this repo is provided for evaluation walkthroughs by Synaptic Four.
-Solum itself remains under its own license in [SynapticFour/Solum](https://github.com/SynapticFour/Solum).
-
-Contact: [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
+Demo scaffolding for evaluation walkthroughs by Synaptic Four.  
+Solum: [SynapticFour/Solum](https://github.com/SynapticFour/Solum) · [synapticfour.com](https://synapticfour.com)

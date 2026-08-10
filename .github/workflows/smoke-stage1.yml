@@ -1,0 +1,50 @@
+# Live Stage-1 stack: build pinned sidecar, run authz + audit + consent smokes.
+# Cold Rust compile is slow — reserved for main pushes, weekly schedule, and manual runs.
+# PR default gate remains smoke-syntax.yml.
+name: smoke-stage1
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: smoke-stage1-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  stage1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bring up Stage-1
+        run: |
+          docker compose up --build -d
+          # Wait for nginx → sidecar audit export
+          for i in $(seq 1 90); do
+            code=$(curl -sS -o /dev/null -w '%{http_code}' \
+              -H 'X-Solum-Sidecar-Token: solum-demo-local-token-not-for-production' \
+              http://127.0.0.1:8080/v1/audit/export || echo 000)
+            if [ "$code" = "200" ]; then
+              echo "ready after ${i} attempts"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "sidecar not ready"
+          docker compose logs --tail=80
+          exit 1
+
+      - name: smoke-stage1
+        run: make smoke-stage1
+
+      - name: smoke-consent
+        run: make smoke-consent
+
+      - name: Teardown
+        if: always()
+        run: docker compose down -v

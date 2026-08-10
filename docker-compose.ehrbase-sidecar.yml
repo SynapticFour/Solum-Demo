@@ -1,0 +1,35 @@
+# H3.0 optional sidecar with Track B CDR façade against EHRbase.
+# Builds Solum from local sibling checkout (../Solum) — not the Stage-1 tag.
+#
+#   docker compose -f docker-compose.ehrbase.yml -f docker-compose.ehrbase-sidecar.yml \
+#     --profile h3-sidecar up --build -d
+#
+# Requires ../Solum to exist (develop tree with H3.0 façade).
+
+services:
+  sidecar-h3:
+    profiles: ["h3-sidecar"]
+    build:
+      context: ../Solum
+      dockerfile: deploy/h3-ehrbase/Dockerfile.sidecar
+    environment:
+      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
+      SOLUM_ALLOW_EPHEMERAL: "1"
+      SOLUM_PROFILE: /etc/solum/dev-local.toml
+      SOLUM_AUDIT: /data/audit.jsonl
+      SOLUM_CONSENT_STORE: /data/consent.jsonl
+      SOLUM_SIDECAR_BIND: 0.0.0.0:8787
+      SOLUM_EHRBASE_URL: http://ehrbase:8080/ehrbase
+      RUST_LOG: info
+    volumes:
+      - solum-h3-sidecar-data:/data
+    ports:
+      - "8787:8787"
+    depends_on:
+      ehrbase:
+        condition: service_healthy
+    networks:
+      - solum-h3
+
+volumes:
+  solum-h3-sidecar-data:

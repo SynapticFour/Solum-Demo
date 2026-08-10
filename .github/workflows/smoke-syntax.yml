@@ -1,0 +1,26 @@
+# Lightweight gate: shell syntax + Makefile present.
+# Full Stage-1 / H3 Docker smokes stay local (`make smoke-all`) — cold sidecar builds are too heavy for default PR CI.
+name: smoke-syntax
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  bash-n:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell syntax
+        run: |
+          bash -n scripts/smoke-stage1.sh
+          bash -n scripts/smoke-consent.sh
+          bash -n scripts/smoke-h3.sh
+          bash -n scripts/smoke-profile-refuse.sh
+      - name: Makefile targets
+        run: |
+          test -f Makefile
+          grep -q 'smoke-stage1' Makefile
+          grep -q 'smoke-h3' Makefile
+          test -f docs/COVERAGE.md

@@ -1,0 +1,67 @@
+# H3.0 — EHRbase + Postgres (dev-local only).
+# Does not replace docker-compose.yml Stage-1 demo.
+# Pins: see sibling Solum VERSIONS (ehrbase:2.34.0, ehrbase-v2-postgres:16.2).
+#
+# Usage:
+#   docker compose -f docker-compose.ehrbase.yml up -d
+# EHRbase on host :8081 (avoids clash with Stage-1 dashboard :8080).
+#
+# Optional Track B sidecar: also -f docker-compose.ehrbase-sidecar.yml --profile h3-sidecar
+
+services:
+  ehrdb:
+    image: ehrbase/ehrbase-v2-postgres:16.2
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      EHRBASE_USER_ADMIN: ehrbase
+      EHRBASE_PASSWORD_ADMIN: ehrbase
+      EHRBASE_USER: ehrbase_restricted
+      EHRBASE_PASSWORD: ehrbase_restricted
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    volumes:
+      - solum-h3-ehrdb:/var/lib/postgresql/data
+    networks:
+      - solum-h3
+
+  ehrbase:
+    image: ehrbase/ehrbase:2.34.0
+    environment:
+      SPRING_PROFILES_ACTIVE: local
+      SERVER_NODENAME: local.ehrbase.org
+      DB_URL: jdbc:postgresql://ehrdb:5432/ehrbase
+      DB_USER_ADMIN: ehrbase
+      DB_PASS_ADMIN: ehrbase
+      DB_USER: ehrbase_restricted
+      DB_PASS: ehrbase_restricted
+      MANAGEMENT_ENDPOINTS_WEB_EXPOSURE: health,info
+      MANAGEMENT_ENDPOINTS_WEB_BASEPATH: /management
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+    depends_on:
+      ehrdb:
+        condition: service_healthy
+    ports:
+      - "8081:8080"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -qO- http://127.0.0.1:8080/ehrbase/rest/status || exit 1",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+    networks:
+      - solum-h3
+
+networks:
+  solum-h3:
+    name: solum-h3-net
+
+volumes:
+  solum-h3-ehrdb:

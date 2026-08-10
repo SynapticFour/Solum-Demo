@@ -1,0 +1,14 @@
+# Solum-Demo pins — what this repo builds and smokes against.
+# Refresh when bumping Stage-1 custody or documenting H3 build source.
+
+# Product tag consumed by Dockerfile / docker-compose.yml (Stage-1 interactive + smoke-stage1 / smoke-consent).
+Solum-tag=stage1-baseline-sidecar-custody-2026-08-01
+
+# H3 Track B (make up-h3 / smoke-h3) builds the local sibling Solum tree (../Solum),
+# not Solum-tag — so CDR/FHIR/AQL reflect current Track B, not the Stage-1 pin.
+# Rebuild after pulling Solum: make down-h3 && make up-h3
+Solum-H3-build=local-sibling-../Solum
+
+# EHRbase stack pins (see sibling Solum VERSIONS when present)
+EHRBASE_IMAGE=ehrbase/ehrbase:2.34.0
+EHRBASE_POSTGRES_IMAGE=ehrbase/ehrbase-v2-postgres:16.2
