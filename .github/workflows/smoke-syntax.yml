@@ -18,9 +18,20 @@ jobs:
           bash -n scripts/smoke-consent.sh
           bash -n scripts/smoke-h3.sh
           bash -n scripts/smoke-profile-refuse.sh
-      - name: Makefile targets
+          bash -n scripts/smoke-fhir-ips.sh
+          bash -n scripts/smoke-migration-rehearsal.sh
+          bash -n scripts/smoke-claims-proof.sh
+      - name: Makefile / coverage / pin honesty
         run: |
           test -f Makefile
           grep -q 'smoke-stage1' Makefile
           grep -q 'smoke-h3' Makefile
+          grep -q 'smoke-fhir-ips' Makefile
+          grep -q 'smoke-consent' Makefile
           test -f docs/COVERAGE.md
+          grep -q 'CLAIMS-PROOF-TRAIL' docs/COVERAGE.md
+          grep -q 'Solum-ref' PINNED_VERSIONS.txt
+          grep -q 'consent.denied' scripts/smoke-consent.sh
+          grep -q 'solum-audit-helios' scripts/smoke-stage1.sh
+          grep -q 'subject' scripts/smoke-stage1.sh
+          grep -q 'Deny B' dashboard/index.html

@@ -1,13 +1,16 @@
 # Solum-Demo — local interactive demo only.
 #
 # Sidecar runs in --ephemeral mode with SOLUM_ALLOW_EPHEMERAL=1 and
-# config/profiles/dev-local.toml from the pinned Solum tag.
+# config/profiles/dev-local.toml from the pinned Solum commit (PINNED_VERSIONS.txt).
 #
 # Demo simplification (documented intentionally): ephemeral test keys live
 # only in process memory. Real deployments use CustomerHeld (--keys-dir) or
-# AWS-KMS (library path today) — see Solum's docs/customer/SECURITY-OVERVIEW.md
+# AWS-KMS — see Solum's docs/customer/SECURITY-OVERVIEW.md
 # and docs/customer/SIDECAR-INTEGRATION.md. This compose file is not a
 # production topology.
+#
+# Encrypt/decrypt require subject + purpose and an active consent grant
+# (Solum Deny B). Dashboard and smoke scripts grant care_provision first.
 #
 # The demo-harness service mutates audit.jsonl on the filesystem. That is
 # DEMO HARNESS CODE in this repository only — never part of Solum / the
@@ -19,7 +22,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SOLUM_TAG: stage1-baseline-sidecar-custody-2026-08-01
+        SOLUM_REF: e17630af7aed577ed3d6a68448f2db114a3f8ceb
         RUST_VERSION: "1.91.1"
     environment:
       SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}

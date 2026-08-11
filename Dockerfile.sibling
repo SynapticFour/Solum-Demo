@@ -1,10 +1,5 @@
-# Builds solum-sidecar from a pinned Solum git commit (not floating main).
-# Pin is documented in PINNED_VERSIONS.txt (Solum-ref) and must include
-# consent-gated crypto (subject/purpose on encrypt/decrypt).
-#
-# Local sibling alternative: make up-sibling (Dockerfile.sibling + ../Solum).
-
-ARG SOLUM_REF=e17630af7aed577ed3d6a68448f2db114a3f8ceb
+# Build Stage-1 sidecar from a local Solum checkout (compose context = ../Solum).
+# Used by: make up-sibling
 ARG RUST_VERSION=1.91.1
 
 FROM rust:${RUST_VERSION}-bookworm AS builder
@@ -17,16 +12,13 @@ RUN apt-get update \
         pkg-config \
     && rm -rf /var/lib/apt/lists/*
 
-ARG SOLUM_REF
 WORKDIR /build
+COPY . .
 
-# Fetch the exact commit (works for annotated tags and bare SHAs).
-RUN git init \
-    && git remote add origin https://github.com/SynapticFour/Solum.git \
-    && git fetch --depth 1 origin "${SOLUM_REF}" \
-    && git checkout FETCH_HEAD
+# Local sibling Ferrum path-patch (.cargo/config.toml) breaks in-image builds.
+# Use the git pin from crates/crypto/Cargo.toml instead.
+RUN rm -f .cargo/config.toml
 
-# ferrum-core (and transitively Crypt4GH) resolve over the network at build time.
 RUN cargo build --release -p solum-sidecar \
     && strip target/release/solum-sidecar
 
@@ -56,7 +48,5 @@ ENV SOLUM_PROFILE=/etc/solum/dev-local.toml \
 
 EXPOSE 8787
 
-# Token must be supplied via compose/env (SOLUM_SIDECAR_TOKEN).
-# --ephemeral is intentional for this local demo only — see README.
 ENTRYPOINT ["solum-sidecar"]
 CMD ["--ephemeral", "--bind", "0.0.0.0:8787"]

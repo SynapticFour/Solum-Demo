@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Profile refuse smoke via sibling Solum checkout (kenya-dpa / eu-ehds).
+# Profile refuse + Kenya transfer fail-closed (sibling Solum).
 # Soft-skip if ../Solum missing unless SOLUM_DEMO_PROFILE_REQUIRE=1.
+# Aligns with Solum claims A7 / A8.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SOLUM_ROOT="${SOLUM_ROOT:-$ROOT/../Solum}"
@@ -34,6 +35,29 @@ if check_ok kenya-dpa.toml EU "$OUT/kenya-eu.txt"; then
   fail "kenya-dpa + EU must refuse"
 fi
 ok "kenya-dpa + EU refused"
+
+# Ephemeral custody refused by kenya-dpa
+if (cd "$SOLUM_ROOT" && SOLUM_STORAGE_REGION=KE SOLUM_KEY_CUSTODY=ephemeral_test \
+  cargo run -q -p solum-core -- check --profile config/profiles/kenya-dpa.toml) >"$OUT/kenya-ephemeral.txt" 2>&1; then
+  fail "kenya-dpa must refuse ephemeral_test custody"
+fi
+ok "kenya-dpa + ephemeral refused"
+
+# Empty permitted_destinations fail-closed (unit)
+(cd "$SOLUM_ROOT" && cargo test -q -p solum-profiles kenya_validate_transfer_fail_closed_empty_destinations) \
+  >"$OUT/kenya-transfer.txt" 2>&1 \
+  || fail "kenya transfer fail-closed unit — see $OUT/kenya-transfer.txt"
+ok "kenya transfer destinations fail-closed (unit)"
+
+# Planned NG/SA scaffolds exist and are NOT auto-loaded from config/profiles/
+[[ -f "$SOLUM_ROOT/config/profiles/planned/nigeria-ndpa.toml" ]] \
+  || fail "missing planned nigeria-ndpa.toml"
+[[ -f "$SOLUM_ROOT/config/profiles/planned/south-africa-popia.toml" ]] \
+  || fail "missing planned south-africa-popia.toml"
+if ls "$SOLUM_ROOT/config/profiles/"nigeria*.toml >/dev/null 2>&1; then
+  fail "nigeria profile must stay under planned/ (not auto-loaded)"
+fi
+ok "Nigeria/SA remain planned scaffolds only (A13)"
 
 check_ok eu-ehds.toml EU "$OUT/eu-eu.txt" || fail "eu-ehds + EU should pass — see $OUT/eu-eu.txt"
 ok "eu-ehds + EU starts"

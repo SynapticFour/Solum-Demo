@@ -1,11 +1,17 @@
 # Solum-Demo pins — what this repo builds and smokes against.
-# Refresh when bumping Stage-1 custody or documenting H3 build source.
+# Refresh when bumping the Stage-1 Solum commit (must include consent-gated crypto).
 
-# Product tag consumed by Dockerfile / docker-compose.yml (Stage-1 interactive + smoke-stage1 / smoke-consent).
-Solum-tag=stage1-baseline-sidecar-custody-2026-08-01
+# Product commit consumed by Dockerfile / docker-compose.yml
+# (Stage-1 interactive + smoke-stage1 / smoke-consent).
+# Aligns with Solum docs/BASELINE.md Verified commit for P0–P3 engineering pass.
+Solum-ref=e17630af7aed577ed3d6a68448f2db114a3f8ceb
+
+# Optional local sibling build: `make up-sibling` (docker-compose.sibling.yml)
+# builds ../Solum instead of cloning Solum-ref — use while developing Solum+Demo together.
+Solum-sibling=../Solum
 
 # H3 Track B (make up-h3 / smoke-h3) builds the local sibling Solum tree (../Solum),
-# not Solum-tag — so CDR/FHIR/AQL reflect current Track B, not the Stage-1 pin.
+# not Solum-ref — so CDR/FHIR/AQL reflect current Track B.
 # Rebuild after pulling Solum: make down-h3 && make up-h3
 Solum-H3-build=local-sibling-../Solum
 

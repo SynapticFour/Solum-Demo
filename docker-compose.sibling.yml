@@ -1,0 +1,9 @@
+# Override Stage-1 sidecar build to use sibling ../Solum (current tree).
+# Usage: docker compose -f docker-compose.yml -f docker-compose.sibling.yml up --build -d
+services:
+  sidecar:
+    build:
+      context: ../Solum
+      dockerfile: ../Solum-Demo/Dockerfile.sibling
+      args:
+        RUST_VERSION: "1.91.1"

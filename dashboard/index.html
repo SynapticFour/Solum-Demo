@@ -164,11 +164,11 @@
     <header>
       <h1>Solum interactive demo</h1>
       <p>
-        Three local scenarios against a real <code>solum-sidecar</code> binary,
-        built from the pinned Solum tag
-        <code>stage1-baseline-sidecar-custody-2026-08-01</code>
-        (see <code>PINNED_VERSIONS.txt</code>).
-        Fail-closed authorization, tamper-evident audit, and consent grant/revoke — on your machine.
+        Four local scenarios against a real <code>solum-sidecar</code> binary,
+        built from the pinned Solum commit in <code>PINNED_VERSIONS.txt</code>
+        (or <code>make up-sibling</code> from <code>../Solum</code>).
+        Fail-closed authorization, consent-gated crypto (Deny B), tamper-evident audit,
+        and a HELIOS-<em>oriented</em> export envelope — on your machine.
         Track B / H3 CDR uses a separate stack (<code>make up-h3</code>).
       </p>
     </header>
@@ -177,6 +177,7 @@
       Local demo with ephemeral test keys only — not a production environment.
       Real deployments use CustomerHeld / AWS-KMS custody; see Solum’s
       <code>SECURITY-OVERVIEW.md</code>.
+      Audit export is a HELIOS-<strong>oriented envelope</strong> only — not live HELIOS signing.
     </div>
 
     <div class="grid">
@@ -184,7 +185,9 @@
         <section class="panel" aria-labelledby="s1">
           <h2 id="s1">Scenario 1 — Fail-closed authorization</h2>
           <p class="lead">
-            Both roles attempt to encrypt the same patient summary.
+            Encrypt requires an active consent grant for
+            <code>(patient/demo-ui, care_provision)</code> covering <code>patient_summary</code>
+            (auto-granted when you click Encrypt as Dr. Amina).
             Only the physician holds <code>solum:crypto:encrypt</code>.
             The intern is denied with HTTP 403; the refusal appears in the live audit log as
             <code>authorization.denied</code>.
@@ -242,6 +245,21 @@ scope: ["patient_summary"]</div>
           </div>
           <div class="result" id="s3-result" aria-live="polite">Waiting for a consent action…</div>
         </section>
+
+        <div style="height:1.25rem"></div>
+
+        <section class="panel" aria-labelledby="s4">
+          <h2 id="s4">Scenario 4 — Deny B (decrypt after revoke)</h2>
+          <p class="lead">
+            After Scenario 1 encrypt (or use the button below), revoke consent, then attempt decrypt.
+            Solum must refuse with a consent denial; the live audit log shows
+            <code>consent.denied</code>. Same proof as <code>make smoke-consent</code>.
+          </p>
+          <div class="actions">
+            <button class="primary" id="btn-denyb-run" type="button">Run Deny B sequence</button>
+          </div>
+          <div class="result" id="s4-result" aria-live="polite">Waiting for Deny B…</div>
+        </section>
       </div>
 
       <section class="panel" aria-labelledby="audit-h">
@@ -256,8 +274,9 @@ scope: ["patient_summary"]</div>
 
     <footer>
       Token header <code>X-Solum-Sidecar-Token</code> is sent only to the local nginx
-      proxy on this machine. Source: <code>SynapticFour/Solum-Demo</code> · consumes
-      Solum tag <code>stage1-baseline-sidecar-custody-2026-08-01</code>.
+      proxy on this machine. Source: <code>SynapticFour/Solum-Demo</code> · Solum pin in
+      <code>PINNED_VERSIONS.txt</code> · claims map:
+      <code>docs/CLAIMS-PROOF-TRAIL.md</code> in Solum. HELIOS export envelope only — no live signing.
     </footer>
   </main>
 
@@ -285,6 +304,21 @@ scope: ["patient_summary"]</div>
       if (kind) el.classList.add(kind);
     }
 
+    const CONSENT_SUBJECT = "patient/demo-ui";
+    const CONSENT_PURPOSE = "care_provision";
+    const KEY_REF = "ephemeral/demo-patient-summary";
+    let lastEncryptedField = null;
+
+    async function ensureConsentGranted() {
+      return consentCall("POST", "/v1/consent/grant", {
+        actor: "practitioner/amina",
+        capability: ["solum:consent:grant"],
+        subject: CONSENT_SUBJECT,
+        purpose: CONSENT_PURPOSE,
+        scope: ["patient_summary"],
+      });
+    }
+
     async function encryptAs(actor, capabilities) {
       const res = await fetch("/v1/crypto/encrypt", {
         method: "POST",
@@ -294,7 +328,9 @@ scope: ["patient_summary"]</div>
         },
         body: JSON.stringify({
           category: "patient_summary",
-          key_ref: "ephemeral/demo-patient-summary",
+          subject: CONSENT_SUBJECT,
+          purpose: CONSENT_PURPOSE,
+          key_ref: KEY_REF,
           actor,
           capability: capabilities,
           plaintext_base64: PLAIN_B64,
@@ -304,12 +340,36 @@ scope: ["patient_summary"]</div>
       return { status: res.status, body };
     }
 
+    async function decryptAs(actor, capabilities, field) {
+      const res = await fetch("/v1/crypto/decrypt", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          [TOKEN_HEADER]: TOKEN,
+        },
+        body: JSON.stringify({
+          subject: CONSENT_SUBJECT,
+          purpose: CONSENT_PURPOSE,
+          key_ref: KEY_REF,
+          actor,
+          capability: capabilities,
+          field,
+        }),
+      });
+      const body = await res.json().catch(() => ({}));
+      return { status: res.status, body };
+    }
+
     async function onEncrypt(actor, caps, label) {
       const out = document.getElementById("s1-result");
-      setResult(out, `Calling /v1/crypto/encrypt as ${label}…`);
+      setResult(out, `Ensuring consent, then /v1/crypto/encrypt as ${label}…`);
       try {
+        if (caps && caps.length) {
+          await ensureConsentGranted();
+        }
         const { status, body } = await encryptAs(actor, caps);
         if (status === 200) {
+          if (body.field) lastEncryptedField = body.field;
           const fieldPreview = body.field
             ? JSON.stringify(body.field).slice(0, 180) + "…"
             : "(no field)";
@@ -392,9 +452,6 @@ scope: ["patient_summary"]</div>
 
     document.getElementById("btn-refresh").addEventListener("click", () => refreshAudit());
 
-    const CONSENT_SUBJECT = "patient/demo-ui";
-    const CONSENT_PURPOSE = "care_provision";
-
     async function consentCall(method, path, body) {
       const opts = {
         method,
@@ -468,6 +525,51 @@ scope: ["patient_summary"]</div>
       }
     });
 
+    document.getElementById("btn-denyb-run").addEventListener("click", async () => {
+      const out = document.getElementById("s4-result");
+      setResult(out, "Deny B: grant → encrypt → revoke → decrypt…");
+      try {
+        await ensureConsentGranted();
+        const enc = await encryptAs("practitioner/amina", ["solum:crypto:encrypt"]);
+        if (enc.status !== 200 || !enc.body.field) {
+          setResult(out, `Encrypt failed HTTP ${enc.status}\n${JSON.stringify(enc.body, null, 2)}`, "deny");
+          await refreshAudit();
+          return;
+        }
+        lastEncryptedField = enc.body.field;
+        const rev = await consentCall("POST", "/v1/consent/revoke", {
+          actor: "practitioner/amina",
+          capability: ["solum:consent:revoke"],
+          subject: CONSENT_SUBJECT,
+          purpose: CONSENT_PURPOSE,
+        });
+        if (!(rev.status === 200 || rev.status === 201)) {
+          setResult(out, `Revoke failed HTTP ${rev.status}\n${JSON.stringify(rev.body, null, 2)}`, "deny");
+          await refreshAudit();
+          return;
+        }
+        const dec = await decryptAs(
+          "practitioner/amina",
+          ["solum:crypto:decrypt"],
+          lastEncryptedField
+        );
+        if (dec.status === 200) {
+          setResult(out, `FAIL: decrypt succeeded after revoke (HTTP 200)`, "deny");
+        } else {
+          setResult(
+            out,
+            `Deny B OK — decrypt refused after revoke (HTTP ${dec.status}).\n` +
+              `message: ${dec.body.message || JSON.stringify(dec.body)}\n` +
+              `Watch the live audit log for consent.denied.`,
+            "ok"
+          );
+        }
+        await refreshAudit();
+      } catch (err) {
+        setResult(out, `Deny B failed: ${err}`, "warn");
+      }
+    });
+
     function renderAudit(envelope) {
       const box = document.getElementById("audit-log");
       const records = (envelope && envelope.records) || [];
@@ -482,7 +584,11 @@ scope: ["patient_summary"]</div>
       box.innerHTML = ordered
         .map((rec) => {
           const ev = rec.event || {};
-          const denied = ev.event_type === "authorization.denied" || ev.outcome === "denied";
+          const denied =
+            ev.event_type === "authorization.denied" ||
+            ev.event_type === "consent.denied" ||
+            ev.outcome === "denied" ||
+            ev.outcome === "Failure";
           return (
             `<div class="audit-entry${denied ? " denied" : ""}">` +
             `<div><span class="etype">${escapeHtml(ev.event_type || "?")}</span>` +
