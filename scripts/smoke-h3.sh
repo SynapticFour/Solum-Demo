@@ -10,6 +10,12 @@ OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-h3}"
 REQUIRE="${SOLUM_DEMO_H3_REQUIRE:-0}"
 ACTOR='practitioner/h3'
 mkdir -p "$OUT"
+{
+  echo "Solum-Demo smoke-h3"
+  echo "utc: $(date -u +%Y%m%dT%H%M%SZ)"
+  echo "base: $BASE"
+  echo "proof_path: Phase 2 Track B evidence (see Solum docs/H3-WORKED-EVIDENCE.md)"
+} >"$OUT/MANIFEST.txt"
 
 skip() {
   echo "SKIP: $*" | tee "$OUT/result.txt"

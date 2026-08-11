@@ -12,8 +12,19 @@
 | Fail-closed crypto authz | UI Scenario 1 + curl | `make smoke-stage1` |
 | Tamper-evident audit | UI Scenario 2 + harness | `make smoke-stage1` |
 | Consent grant/status/revoke | UI Scenario 3 + HTTP smoke | `make smoke-consent` |
-| H3 CDR / FHIR / AQL / dual-write / subject-link | EHRbase overlay + curl | `make smoke-h3` (soft-skip if down) |
+| H3 CDR / FHIR / AQL / dual-write / subject-link | EHRbase overlay + curl → `artifacts/smoke-h3/` | `make smoke-h3` (soft-skip if down) |
 | `kenya-dpa` / `eu-ehds` refuse wrong region | Sibling Solum `solum check` | `make smoke-profile` (soft-skip if no ../Solum) |
+
+## Proof path (portfolio)
+
+Solum’s documented proof stack (Track A worked example, Track B evidence packaging, FHIR/DE gap docs) lives in the product repo:
+
+- [WORKED-EXAMPLE.md](https://github.com/SynapticFour/Solum/blob/main/docs/WORKED-EXAMPLE.md) — CLI consent/crypto/audit (`../Solum/examples/compliance-worked-example/run.sh`)
+- [H3-WORKED-EVIDENCE.md](https://github.com/SynapticFour/Solum/blob/main/docs/H3-WORKED-EVIDENCE.md) — this Demo’s `make smoke-h3` + retained `artifacts/smoke-h3/`
+- [FHIR-VALIDATION.md](https://github.com/SynapticFour/Solum/blob/main/docs/FHIR-VALIDATION.md) · [DE-FHIR-GAP.md](https://github.com/SynapticFour/Solum/blob/main/docs/DE-FHIR-GAP.md)
+
+**Proof path Phase 2:** `make smoke-h3` is the Track B evidence command; outputs under `artifacts/smoke-h3/` (gitignored). Set `SOLUM_DEMO_H3_REQUIRE=1` to fail when the stack is down.
+
 
 ## What lives elsewhere (still required for full ecosystem proof)
 

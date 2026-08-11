@@ -2,7 +2,8 @@
 
 Interactive **local** demo of [Solum](https://github.com/SynapticFour/Solum) Stage‑1 proofs (**fail-closed authorization**, **tamper-evident audit**) plus **automated smokes** for consent and optional H3 Track B / jurisdiction profiles.
 
-Coverage map (what this repo vs Showcase/Solum owns): [`docs/COVERAGE.md`](docs/COVERAGE.md).
+Coverage map (what this repo vs Showcase/Solum owns): [`docs/COVERAGE.md`](docs/COVERAGE.md).  
+Solum product proof stack (Track A worked example, Track B evidence, DE FHIR gap): see COVERAGE §Proof path.
 
 > **Local demo with ephemeral test keys — not a production environment.**
 
