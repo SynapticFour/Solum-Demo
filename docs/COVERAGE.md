@@ -3,7 +3,7 @@
 **Date:** 2026-08-11  
 **Honesty:** This repo is an **interactive + smoke** mirror of Solum — not the full product test suite. Unit/integration depth lives in **Solum** (`cargo test` / `./scripts/verify.sh`) and **Showcase** (teeth, Path E+, evidence pack).
 
-**Pins:** [`PINNED_VERSIONS.txt`](../PINNED_VERSIONS.txt) — Stage-1 builds **Solum-ref** (commit with consent-gated crypto); H3 builds local `../Solum`. Dev alignment: `make up-sibling`.
+**Pins:** [`PINNED_VERSIONS.txt`](../PINNED_VERSIONS.txt) — Stage-1 builds **Solum-ref** (commit with consent-gated crypto); H3 builds local `../Solum`. Dev alignment: `make up-sibling`. Image policy: [`IMAGE-PIN-POLICY.md`](IMAGE-PIN-POLICY.md).
 
 **Master claim map (product):** [Solum CLAIMS-PROOF-TRAIL.md](https://github.com/SynapticFour/Solum/blob/main/docs/CLAIMS-PROOF-TRAIL.md)
 
