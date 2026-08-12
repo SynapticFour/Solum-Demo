@@ -24,18 +24,20 @@ jobs:
       - name: Bring up Stage-1
         run: |
           docker compose up --build -d
-          # Wait for nginx → sidecar audit export
+          # Wait for nginx → sidecar audit export AND demo harness health
           for i in $(seq 1 90); do
             code=$(curl -sS -o /dev/null -w '%{http_code}' \
               -H 'X-Solum-Sidecar-Token: solum-demo-local-token-not-for-production' \
               http://127.0.0.1:8080/v1/audit/export || echo 000)
-            if [ "$code" = "200" ]; then
-              echo "ready after ${i} attempts"
+            harness=$(curl -sS -o /dev/null -w '%{http_code}' \
+              http://127.0.0.1:8080/demo/health || echo 000)
+            if [ "$code" = "200" ] && [ "$harness" = "200" ]; then
+              echo "ready after ${i} attempts (sidecar=${code} harness=${harness})"
               exit 0
             fi
             sleep 5
           done
-          echo "sidecar not ready"
+          echo "sidecar/harness not ready (last sidecar=${code:-?} harness=${harness:-?})"
           docker compose logs --tail=80
           exit 1
 

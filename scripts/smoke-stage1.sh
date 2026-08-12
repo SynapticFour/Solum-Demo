@@ -59,13 +59,35 @@ echo "$export2" | grep -q 'authorization.denied' \
 ok "authorization.denied audited"
 
 # Tamper via harness + verify
-curl -sS -X POST "$BASE/demo/simulate-tampering" -H "Content-Type: application/json" -d '{}' \
-  >"$OUT/tamper.json" || fail "harness tamper failed"
-verify="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" "$BASE/v1/audit/verify")"
-vbody="$(echo "$verify" | sed '$d')"
-vcode="$(echo "$verify" | tail -n1)"
+tamper="$(curl -sS -w "\n%{http_code}" -X POST "$BASE/demo/simulate-tampering" \
+  -H "Content-Type: application/json" -d '{}')"
+tbody="$(echo "$tamper" | sed '$d')"
+tcode="$(echo "$tamper" | tail -n1)"
+echo "$tbody" >"$OUT/tamper.json"
+[[ "$tcode" == "200" ]] || fail "harness tamper expected HTTP 200 got $tcode: $tbody"
+echo "$tbody" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' \
+  || fail "harness tamper did not report ok: $tbody"
+# Require an actual mutation (or an already-tampered marker from a prior step).
+echo "$tbody" | grep -Eq '"already_tampered"[[:space:]]*:[[:space:]]*true|"tampered_actor"' \
+  || fail "harness tamper response missing mutation evidence: $tbody"
+ok "harness mutated audit.jsonl on shared volume"
+
+# Sidecar re-opens the file on each verify; brief retry covers volume visibility races.
+verify_ok=0
+vbody=""
+vcode=""
+for _try in 1 2 3 4 5; do
+  verify="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" "$BASE/v1/audit/verify")"
+  vbody="$(echo "$verify" | sed '$d')"
+  vcode="$(echo "$verify" | tail -n1)"
+  if echo "$vbody" | grep -qi "chain_broken\|broken\|error"; then
+    verify_ok=1
+    break
+  fi
+  sleep 0.4
+done
 echo "$vbody" >"$OUT/audit-verify.json"
-echo "$vbody" | grep -qi "chain_broken\|broken\|error" || fail "expected chain_broken after tamper: $vbody"
+[[ "$verify_ok" == "1" ]] || fail "expected chain_broken after tamper: $vbody"
 ok "audit verify reports chain break (HTTP $vcode)"
 echo "PASS stage1" | tee "$OUT/result.txt"
 exit 0

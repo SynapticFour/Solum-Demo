@@ -93,8 +93,22 @@ def simulate_tampering() -> dict:
 
     event["actor"] = tampered_actor
     first["event"] = event
-    lines[0] = json.dumps(first, separators=(",", ":"), ensure_ascii=False)
-    AUDIT_PATH.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    # Prefer in-place string replace (matches Solum FileAuditStore::detects_tampering)
+    # so we only change the actor bytes and leave every other field's serialization alone.
+    original_line = lines[0]
+    needle = f'"actor":"{original_actor}"'
+    replacement = f'"actor":"{tampered_actor}"'
+    if needle in original_line:
+        lines[0] = original_line.replace(needle, replacement, 1)
+    else:
+        # Fallback when JSON spacing differs from the compact form above.
+        lines[0] = json.dumps(first, separators=(",", ":"), ensure_ascii=False)
+    payload = "\n".join(lines) + "\n"
+    # fsync so the sidecar's subsequent verify sees the mutation on the shared volume
+    with AUDIT_PATH.open("w", encoding="utf-8") as fh:
+        fh.write(payload)
+        fh.flush()
+        os.fsync(fh.fileno())
 
     return {
         "ok": True,
