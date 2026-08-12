@@ -1,13 +1,11 @@
 # Live Stage-1 stack: build pinned sidecar, run authz + audit + consent smokes.
-# Cold Rust compile is slow — reserved for main pushes, weekly schedule, and manual runs.
+# Cold Rust compile is slow — reserved for main pushes and manual runs (no weekly schedule).
 # PR default gate remains smoke-syntax.yml.
 name: smoke-stage1
 
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "17 4 * * 1"
   workflow_dispatch:
 
 concurrency:
