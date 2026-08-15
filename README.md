@@ -50,7 +50,7 @@ make check       # pin drift, LICENSE, bash -n, harness unit tests
 
 | Target | Proves | Needs |
 |--------|--------|-------|
-| `smoke-stage1` | Consent-gated encrypt allow; empty `capability[]` → 403 + `authorization.denied`; HELIOS export `format`; audit `error=chain_broken` | `make up` |
+| `smoke-stage1` | Consent-gated encrypt allow; empty `capability[]` → 403 + `access.denied`; HELIOS export `format`; audit `error=chain_broken` | `make up` |
 | `smoke-consent` | Grant → encrypt → decrypt → revoke → decrypt 400/403 with `consent denied` | `make up` |
 | `smoke-h3` | CDR template/EHR/composition, FHIR Patient, subject-link, dual-write **façade** + `link_cdr=true` dead-letter, AQL | `make up-h3` (`SOLUM_DEMO_H3_REQUIRE=1` fails if down) |
 | `smoke-profile` | `kenya-dpa` / `eu-ehds` residency; KE ephemeral refuse; transfer fail-closed; planned NG/SA only | sibling `../Solum` |
@@ -72,7 +72,7 @@ Ecosystem integrations **not** in this repo (Showcase):
 
 ### Scenario 1 — Fail-closed empty `capability[]`
 
-Encrypt requires an active consent grant for `(subject, purpose)` covering `patient_summary`. The JSON body must include `solum:crypto:encrypt` (**client-asserted** on `dev-local`). Empty `capability[]` → 403 + `authorization.denied`. There is no intern role.
+Encrypt requires an active consent grant for `(subject, purpose)` covering `patient_summary`. The JSON body must include `solum:crypto:encrypt` (**client-asserted** on `dev-local`). Empty `capability[]` → 403 + `access.denied`. There is no intern role.
 
 ### Scenario 2 — Tamper-evident audit trail
 

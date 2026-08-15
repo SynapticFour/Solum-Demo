@@ -304,9 +304,11 @@
       .map((rec) => {
         const ev = rec.event || {};
         const denied =
+          ev.event_type === "access.denied" ||
           ev.event_type === "authorization.denied" ||
           ev.event_type === "consent.denied" ||
           ev.outcome === "denied" ||
+          ev.outcome === "failure" ||
           ev.outcome === "Failure";
         return (
           `<div class="audit-entry${denied ? " denied" : ""}">` +

@@ -14,7 +14,7 @@
 | Layer | Claim ids | How | Command |
 |-------|-----------|-----|---------|
 | HELIOS-oriented audit export envelope | A6 | Export JSON `format` starts with `solum-audit-helios` — **not** live signing | `make smoke-stage1` |
-| Fail-closed empty `capability[]` | A2 | Empty caps → 403 + `authorization.denied`. **Not** physician/intern RBAC | `make smoke-stage1` / UI Scenario 1 |
+| Fail-closed empty `capability[]` | A2 | Empty caps → 403 + `access.denied`. **Not** physician/intern RBAC | `make smoke-stage1` / UI Scenario 1 |
 | Tamper-evident audit | — | Harness rewrite → verify `error=chain_broken` | `make smoke-stage1` / UI Scenario 2 |
 | Consent + Deny B | A3 | Grant → encrypt → decrypt → revoke → decrypt 400/403 with `consent denied` + `consent.denied` | `make smoke-consent` / UI Scenario 3–4 |
 | H3 CDR / FHIR / AQL / subject-link | A12 | EHRbase overlay → `artifacts/smoke-h3/` | `make smoke-h3` (`SOLUM_DEMO_H3_REQUIRE=1` to fail if down) |
