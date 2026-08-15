@@ -1,6 +1,6 @@
 # Makefile — Solum-Demo local lifecycle
 
-.PHONY: help up up-sibling down reset up-h3 down-h3 check \
+.PHONY: help up up-sibling down reset up-h3 down-h3 check prove \
 	smoke-stage1 smoke-consent smoke-h3 smoke-profile \
 	smoke-fhir-ips smoke-migration smoke-claims-proof smoke-all smoke-ci
 
@@ -61,6 +61,10 @@ check:
 	bash -n scripts/smoke-migration-rehearsal.sh
 	bash -n scripts/smoke-claims-proof.sh
 	python3 -m unittest discover -s demo-harness -p 'test_*.py' -v
+
+# Zero-risk: pins, LICENSE, syntax, harness tests. Live proof: make up && make smoke-ci
+prove: check
+	@echo "Solum-Demo offline prove OK. Interactive: make up && make smoke-ci"
 
 smoke-stage1:
 	SOLUM_DEMO_BASE_URL="$${SOLUM_DEMO_BASE_URL:-http://127.0.0.1:$${SOLUM_DEMO_PORT:-8080}}" ./scripts/smoke-stage1.sh
