@@ -4,6 +4,7 @@ Interactive **local developer** walkthrough of [Solum](https://github.com/Synapt
 
 **This is not a customer evaluation** and not a production environment. It uses Solum `dev-local.toml` (ephemeral keys; client-asserted `capability[]`). Solum’s own profile forbids that posture for customer evaluations. Pilot org-IAM lives in Solum tests / Showcase, not here.
 
+Persona sheet (what ran vs not): [`docs/PERSONA.md`](docs/PERSONA.md).  
 Coverage map: [`docs/COVERAGE.md`](docs/COVERAGE.md).  
 Product claim → proof matrix: Solum [`docs/CLAIMS-PROOF-TRAIL.md`](https://github.com/SynapticFour/Solum/blob/main/docs/CLAIMS-PROOF-TRAIL.md).  
 Scope decision: [`docs/adr/0001-demo-scope.md`](docs/adr/0001-demo-scope.md).
@@ -128,6 +129,7 @@ Solum-Demo/
 ├── Makefile
 ├── PINNED_VERSIONS.txt
 ├── docs/COVERAGE.md
+├── docs/PERSONA.md
 ├── docs/adr/
 ├── scripts/smoke-*.sh
 ├── .github/workflows/   # smoke-syntax (make check) + smoke-stage1 (PR + main)
