@@ -18,7 +18,7 @@ help:
 	@echo "  make smoke-fhir-ips     solum fhir export-ips + structural (../Solum)"
 	@echo "  make smoke-migration    Prefer/Cut-over dry rehearsal (../Solum)"
 	@echo "  make smoke-claims-proof Solum ./scripts/demo-claims-proof.sh (../Solum)"
-	@echo "  make smoke-ci           stage1 + consent (what GitHub Actions runs)"
+	@echo "  make smoke-ci           consent + stage1 (tamper last; what GitHub Actions runs)"
 	@echo "  make smoke-all          all smokes; sibling/H3 skips are failures"
 	@echo "  make check              pin drift, LICENSE, bash -n, harness unit tests"
 
@@ -27,7 +27,7 @@ help:
 
 up:
 	@test -n "$(SOLUM_REF)" || (echo "PINNED_VERSIONS.txt missing Solum-ref"; exit 1)
-	SOLUM_REF="$(SOLUM_REF)" docker compose up --build -d
+	SOLUM_REF="$(SOLUM_REF)" docker compose up --build -d || { docker compose logs sidecar --tail=80; exit 1; }
 
 up-sibling:
 	docker compose -f docker-compose.yml -f docker-compose.sibling.yml up --build -d
@@ -83,10 +83,10 @@ smoke-migration:
 smoke-claims-proof:
 	./scripts/smoke-claims-proof.sh
 
-smoke-ci: smoke-stage1 smoke-consent
+smoke-ci: smoke-consent smoke-stage1
 
 # Full proof set: missing sibling / H3 is a failure, not a skip.
 smoke-all:
 	SOLUM_DEMO_H3_REQUIRE=1 SOLUM_DEMO_PROFILE_REQUIRE=1 SOLUM_DEMO_FHIR_REQUIRE=1 \
 	SOLUM_DEMO_MIGRATION_REQUIRE=1 SOLUM_DEMO_CLAIMS_REQUIRE=1 \
-	$(MAKE) smoke-stage1 smoke-consent smoke-h3 smoke-profile smoke-fhir-ips smoke-migration smoke-claims-proof
+	$(MAKE) smoke-consent smoke-stage1 smoke-h3 smoke-profile smoke-fhir-ips smoke-migration smoke-claims-proof

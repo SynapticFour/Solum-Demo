@@ -45,6 +45,7 @@ ENV SOLUM_PROFILE=/etc/solum/dev-local.toml \
     SOLUM_CONSENT_STORE=/data/consent.jsonl \
     SOLUM_SIDECAR_BIND=0.0.0.0:8787 \
     SOLUM_ALLOW_EPHEMERAL=1 \
+    SOLUM_ALLOW_PLAINTEXT_HTTP=1 \
     RUST_LOG=info
 
 EXPOSE 8787

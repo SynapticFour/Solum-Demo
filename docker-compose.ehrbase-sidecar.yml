@@ -15,6 +15,7 @@ services:
     environment:
       SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
       SOLUM_ALLOW_EPHEMERAL: "1"
+      SOLUM_ALLOW_PLAINTEXT_HTTP: "1"
       SOLUM_PROFILE: /etc/solum/dev-local.toml
       SOLUM_AUDIT: /data/audit.jsonl
       SOLUM_CONSENT_STORE: /data/consent.jsonl

@@ -19,7 +19,7 @@ git clone https://github.com/SynapticFour/Solum-Demo.git
 cd Solum-Demo
 make up          # reads Solum-ref from PINNED_VERSIONS.txt
 # open http://127.0.0.1:8080  (loopback only)
-make smoke-ci    # smoke-stage1 + smoke-consent
+make smoke-ci    # smoke-consent then smoke-stage1 (tamper last)
 ```
 
 While developing Solum beside this repo, prefer the sibling build (current `../Solum` tree, **not** the pin):
@@ -50,14 +50,14 @@ make check       # pin drift, LICENSE, bash -n, harness unit tests
 
 | Target | Proves | Needs |
 |--------|--------|-------|
-| `smoke-stage1` | Consent-gated encrypt allow; empty `capability[]` → 403 + `authorization.denied`; HELIOS export `format`; audit `error=chain_broken` | `make up` |
+| `smoke-stage1` | Consent-gated encrypt allow; empty `capability[]` → 403 + `access.denied`; HELIOS export `format`; audit `error=chain_broken` | `make up` |
 | `smoke-consent` | Grant → encrypt → decrypt → revoke → decrypt 400/403 with `consent denied` | `make up` |
 | `smoke-h3` | CDR template/EHR/composition, FHIR Patient, subject-link, dual-write **façade** + `link_cdr=true` dead-letter, AQL | `make up-h3` (`SOLUM_DEMO_H3_REQUIRE=1` fails if down) |
 | `smoke-profile` | `kenya-dpa` / `eu-ehds` residency; KE ephemeral refuse; transfer fail-closed; planned NG/SA only | sibling `../Solum` |
 | `smoke-fhir-ips` | `solum fhir export-ips` + structural checks **on that file** | sibling `../Solum` |
 | `smoke-migration` | Prefer/Cut-over **tooling** dry rehearsal | sibling `../Solum` |
 | `smoke-claims-proof` | Solum `./scripts/demo-claims-proof.sh` one-shot | sibling `../Solum` |
-| `smoke-ci` | stage1 + consent | stack up |
+| `smoke-ci` | consent then stage1 (tamper last) | stack up |
 | `smoke-all` | all of the above; sibling/H3 **skip = fail** | pin stack + sibling + H3 |
 
 Ecosystem integrations **not** in this repo (Showcase):
@@ -72,7 +72,7 @@ Ecosystem integrations **not** in this repo (Showcase):
 
 ### Scenario 1 — Fail-closed empty `capability[]`
 
-Encrypt requires an active consent grant for `(subject, purpose)` covering `patient_summary`. The JSON body must include `solum:crypto:encrypt` (**client-asserted** on `dev-local`). Empty `capability[]` → 403 + `authorization.denied`. There is no intern role.
+Encrypt requires an active consent grant for `(subject, purpose)` covering `patient_summary`. The JSON body must include `solum:crypto:encrypt` (**client-asserted** on `dev-local`). Empty `capability[]` → 403 + `access.denied`. There is no intern role.
 
 ### Scenario 2 — Tamper-evident audit trail
 

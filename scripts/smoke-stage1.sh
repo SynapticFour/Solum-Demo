@@ -49,14 +49,15 @@ assert_json "$OUT/encrypt-deny.json" 'd.get("error") == "forbidden"' \
 ok "encrypt deny HTTP 403 (empty capability[] — client-asserted, not RBAC)"
 
 curl -sS "${GET_HDR[@]}" "$BASE/v1/audit/export" >"$OUT/audit-export-after-deny.json"
-python3 - "$OUT/audit-export-after-deny.json" <<'PY' || fail "audit export missing authorization.denied after empty-capability encrypt"
+python3 - "$OUT/audit-export-after-deny.json" <<'PY' || fail "audit export missing access.denied after empty-capability encrypt"
 import json, sys
 d = json.load(open(sys.argv[1]))
 types = [(r.get("event") or {}).get("event_type") for r in d.get("records") or []]
-if "authorization.denied" not in types:
+# Product writes access.denied (solum_audit::events::ACCESS_DENIED). Older copy said authorization.denied.
+if "access.denied" not in types and "authorization.denied" not in types:
     sys.exit(1)
 PY
-ok "authorization.denied audited"
+ok "access.denied audited"
 
 tamper_code="$(curl_json "$OUT/tamper.json" POST "$BASE/demo/simulate-tampering" "${HDR[@]}" -d '{}')"
 [[ "$tamper_code" == "200" ]] || fail "harness tamper expected HTTP 200 got $tamper_code: $(cat "$OUT/tamper.json")"
@@ -73,7 +74,13 @@ for _try in 1 2 3 4 5; do
   if python3 - "$OUT/audit-verify.json" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
-sys.exit(0 if d.get("error") == "chain_broken" else 1)
+err = d.get("error") or ""
+msg = (d.get("message") or "").lower()
+# Pin 6b4519c: FileAuditStore::open verifies the chain, so tamper fails open()
+# and the sidecar maps that to error=bad_request with a "chain broken" message.
+# verify_chain() itself would return error=chain_broken.
+ok = err == "chain_broken" or "chain broken" in msg or "chain_broken" in msg
+sys.exit(0 if ok else 1)
 PY
   then
     verify_ok=1
@@ -81,7 +88,7 @@ PY
   fi
   sleep 0.4
 done
-[[ "$verify_ok" == "1" ]] || fail "expected error=chain_broken after tamper: $(cat "$OUT/audit-verify.json")"
-ok "audit verify reports chain_broken (HTTP $vcode)"
+[[ "$verify_ok" == "1" ]] || fail "expected chain-broken evidence after tamper: $(cat "$OUT/audit-verify.json")"
+ok "audit verify reports chain broken (HTTP $vcode)"
 echo "PASS stage1" | tee "$OUT/result.txt"
 exit 0
