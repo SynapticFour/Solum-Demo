@@ -1,6 +1,6 @@
 # Solum Demo
 
-Interactive **local developer** walkthrough of [Solum](https://github.com/SynapticFour/Solum) Stage‑1 proofs (**empty-`capability[]` deny**, **consent-gated crypto / Deny B**, **tamper-evident audit**, **HELIOS-oriented export envelope**) plus automated smokes for Track B H3 and sibling Solum claims (FHIR IPS, Kenya, migration rehearsal).
+**Proof / outreach — not a product, not a customer evaluation, not a production environment.** Local developer walkthrough of [Solum](https://github.com/SynapticFour/Solum). Persona: [`docs/PERSONA.md`](docs/PERSONA.md).
 
 **This is not a customer evaluation** and not a production environment. It uses Solum `dev-local.toml` (ephemeral keys; client-asserted `capability[]`). Solum’s own profile forbids that posture for customer evaluations. Pilot org-IAM lives in Solum tests / Showcase, not here.
 
