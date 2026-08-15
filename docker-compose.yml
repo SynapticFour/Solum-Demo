@@ -6,9 +6,11 @@
 # it for customer evaluations — this compose file is the matching local
 # developer walkthrough, not a pilot.
 #
-# Bind: 127.0.0.1 only. nginx injects X-Solum-Sidecar-Token so the UI
-# source does not contain the secret. The demo-harness mutates audit.jsonl
-# on the filesystem (DEMO ONLY — never part of Solum).
+# Bind: 127.0.0.1 on the host. Sidecar listens 0.0.0.0 inside the compose
+# network, which Solum 6b4519c+ allows only with SOLUM_ALLOW_PLAINTEXT_HTTP=1
+# (dev-local eval). nginx injects X-Solum-Sidecar-Token so the UI source
+# does not contain the secret. The demo-harness mutates audit.jsonl on the
+# filesystem (DEMO ONLY — never part of Solum).
 
 services:
   sidecar:
@@ -21,6 +23,8 @@ services:
     environment:
       SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
       SOLUM_ALLOW_EPHEMERAL: "1"
+      # Pin 6b4519c+ refuses non-loopback HTTP unless this is set (dev-local Docker eval only).
+      SOLUM_ALLOW_PLAINTEXT_HTTP: "1"
       SOLUM_PROFILE: /etc/solum/dev-local.toml
       SOLUM_AUDIT: /data/audit.jsonl
       SOLUM_CONSENT_STORE: /data/consent.jsonl
@@ -34,7 +38,7 @@ services:
       test:
         [
           "CMD-SHELL",
-          "curl -sS -o /dev/null -w '%{http_code}' http://127.0.0.1:8787/v1/audit/export | grep -Eq '401|403|200'",
+          "curl -sS -o /dev/null -w '%{http_code}' -H 'X-Solum-Actor: practitioner/amina' -H 'X-Solum-Capability: solum:audit:export' http://127.0.0.1:8787/v1/audit/export | grep -Eq '401|403|200'",
         ]
       interval: 5s
       timeout: 3s

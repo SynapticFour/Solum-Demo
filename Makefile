@@ -27,7 +27,7 @@ help:
 
 up:
 	@test -n "$(SOLUM_REF)" || (echo "PINNED_VERSIONS.txt missing Solum-ref"; exit 1)
-	SOLUM_REF="$(SOLUM_REF)" docker compose up --build -d
+	SOLUM_REF="$(SOLUM_REF)" docker compose up --build -d || { docker compose logs sidecar --tail=80; exit 1; }
 
 up-sibling:
 	docker compose -f docker-compose.yml -f docker-compose.sibling.yml up --build -d

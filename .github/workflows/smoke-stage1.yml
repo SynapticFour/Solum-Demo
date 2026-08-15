@@ -21,7 +21,7 @@ jobs:
 
       - name: Bring up Stage-1
         run: |
-          make up
+          make up || { docker compose logs --tail=120; exit 1; }
           for i in $(seq 1 90); do
             code=$(curl -sS -o /dev/null -w '%{http_code}' \
               -H 'X-Solum-Actor: practitioner/amina' \
