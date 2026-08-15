@@ -2,7 +2,7 @@
 # This image is NOT Solum and must never be copied into the Solum product repo.
 # uid 10001 matches the sidecar so rewriting audit.jsonl does not steal ownership.
 
-FROM python:3.12-slim-bookworm
+FROM python:3.14-slim-bookworm
 
 WORKDIR /app
 COPY server.py /app/server.py
