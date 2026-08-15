@@ -1,20 +1,31 @@
-# Solum-Demo pins — what this repo builds and smokes against.
-# Refresh when bumping the Stage-1 Solum commit (must include consent-gated crypto).
+# Solum-Demo pins — single source of truth.
+# `make up` exports Solum-ref into docker compose (Dockerfile ARG default
+# must match; CI fails if they drift).
 
 # Product commit consumed by Dockerfile / docker-compose.yml
 # (Stage-1 interactive + smoke-stage1 / smoke-consent).
-# Aligns with Solum docs/BASELINE.md Verified commit for P0–P3 engineering pass.
-Solum-ref=e17630af7aed577ed3d6a68448f2db114a3f8ceb
+# Must equal Solum docs/BASELINE.md "Verified commit".
+Solum-ref=6b4519c98f5c1e905ab5cf3f517787021d1e2604
 
 # Optional local sibling build: `make up-sibling` (docker-compose.sibling.yml)
-# builds ../Solum instead of cloning Solum-ref — use while developing Solum+Demo together.
+# builds ../Solum instead of cloning Solum-ref — use while developing Solum+Demo
+# together. Sibling is NOT the Stage-1 pin. After Solum HEAD moves, smokes that
+# hit GET /v1/audit/* must send X-Solum-Actor + X-Solum-Capability (this repo
+# does). `make up-sibling` still strips ../Solum/.cargo/config.toml inside the
+# image so Ferrum resolves from crates/crypto git pin, not a host path patch.
 Solum-sibling=../Solum
 
 # H3 Track B (make up-h3 / smoke-h3) builds the local sibling Solum tree (../Solum),
-# not Solum-ref — so CDR/FHIR/AQL reflect current Track B.
-# Rebuild after pulling Solum: make down-h3 && make up-h3
+# not Solum-ref — Stage-1 pin may lack the CDR façade. Rebuild after pulling Solum:
+# make down-h3 && make up-h3
 Solum-H3-build=local-sibling-../Solum
 
 # EHRbase stack pins (see sibling Solum VERSIONS when present)
 EHRBASE_IMAGE=ehrbase/ehrbase:2.34.0
 EHRBASE_POSTGRES_IMAGE=ehrbase/ehrbase-v2-postgres:16.2
+
+# Compose / Dockerfiles (see docs/IMAGE-PIN-POLICY.md)
+NGINX_IMAGE=nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
+PYTHON_IMAGE=python:3.12-slim-bookworm
+RUST_IMAGE=rust:1.91.1-bookworm
+DEBIAN_IMAGE=debian:bookworm-slim

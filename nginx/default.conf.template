@@ -1,6 +1,12 @@
 # Reverse-proxy: one origin for the dashboard, Solum sidecar (/v1/*), and
-# the demo-only tamper harness (/demo/*). Keeps browser fetch() simple and
-# avoids CORS against the sidecar (which does not emit CORS headers).
+# the demo-only tamper harness (/demo/*).
+#
+# X-Solum-Sidecar-Token is injected here so the browser never holds it.
+# Host ports are loopback-only (see compose). Combined, LAN clients cannot
+# reach this origin; localhost processes can, which is the demo contract.
+#
+# $host / $uri / $scheme must not be envsubst'd — envsubst is limited to
+# SOLUM_SIDECAR_TOKEN (see docker-compose.yml dashboard command).
 
 server {
     listen 80;
@@ -21,14 +27,16 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Solum-Sidecar-Token ${SOLUM_SIDECAR_TOKEN};
     }
 
     # DEMO HARNESS ONLY — filesystem tampering for Scenario 2.
-    # Not part of Solum. See demo-harness/ and README.
+    # Not part of Solum. Token required (injected below; harness verifies).
     location /demo/ {
         proxy_pass http://demo-harness:8790;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Solum-Sidecar-Token ${SOLUM_SIDECAR_TOKEN};
     }
 }

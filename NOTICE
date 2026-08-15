@@ -1,0 +1,31 @@
+Solum-Demo
+Copyright 2026 Synaptic Four
+
+This repository's demo scaffolding (Compose files, nginx config, dashboard,
+demo-harness, Makefile, smoke scripts, and docs) is licensed under the
+Apache License, Version 2.0. See LICENSE.
+
+-----------------------------------------------------------------------------
+Solum (built into the sidecar image)
+-----------------------------------------------------------------------------
+
+`make up` clones and compiles SynapticFour/Solum at the commit in
+PINNED_VERSIONS.txt (Solum-ref). The resulting `solum-sidecar` binary is
+Solum, licensed under Business Source License 1.1 — not Apache-2.0.
+
+Solum BSL 1.1 is not an Open Source license. Commercial use, and providing
+Solum as a hosted or managed service, require a commercial license from
+Synaptic Four unless an Additional Use Grant in Solum's LICENSE applies
+(non-commercial research / internal research). See:
+
+  https://github.com/SynapticFour/Solum/blob/main/LICENSE
+
+Do not treat a running Solum-Demo stack as redistributable Solum.
+
+-----------------------------------------------------------------------------
+Third-party images
+-----------------------------------------------------------------------------
+
+- nginx (nginx:1.27-alpine) — BSD-2-Clause; F5, Inc.
+- EHRbase / ehrbase-v2-postgres (H3 overlay only) — Apache-2.0; Vita24 / EHRbase
+- rust / debian / python base images — their respective Debian/PSF licenses

@@ -3,9 +3,16 @@
 # Aligns with Solum claims A2 / A6 (authz deny + export envelope).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 BASE="${SOLUM_DEMO_BASE_URL:-http://127.0.0.1:8080}"
 TOKEN="${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}"
 HDR=(-H "X-Solum-Sidecar-Token: $TOKEN" -H "Content-Type: application/json")
+GET_HDR=(
+  -H "X-Solum-Sidecar-Token: $TOKEN"
+  -H "X-Solum-Actor: practitioner/amina"
+  -H "X-Solum-Capability: solum:audit:export,solum:audit:verify,solum:consent:read"
+)
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-stage1}"
 mkdir -p "$OUT"
 SUBJECT="patient/demo-stage1"
@@ -14,80 +21,67 @@ PURPOSE="care_provision"
 fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; exit 1; }
 ok() { echo "OK: $*" | tee -a "$OUT/result.txt"; }
 
-code="$(curl -sS -o /dev/null -w "%{http_code}" "${HDR[@]}" "$BASE/v1/audit/export" || true)"
+code="$(curl -sS -o /dev/null -w "%{http_code}" "${GET_HDR[@]}" "$BASE/v1/audit/export" || true)"
 [[ "$code" == "200" ]] || fail "sidecar not ready at $BASE (HTTP $code) — run: make up"
 
-# HELIOS-oriented export envelope (not live signing)
-export_json="$(curl -sS "${HDR[@]}" "$BASE/v1/audit/export")"
-echo "$export_json" >"$OUT/audit-export.json"
-echo "$export_json" | grep -q 'solum-audit-helios' \
+curl -sS "${GET_HDR[@]}" "$BASE/v1/audit/export" >"$OUT/audit-export.json"
+assert_json "$OUT/audit-export.json" \
+  'str(d.get("format") or "").startswith("solum-audit-helios")' \
   || fail "audit export missing solum-audit-helios* format marker"
 ok "HELIOS-oriented audit export envelope present"
 
-# Grant consent so capability-checked encrypt can succeed (Deny B prerequisite)
-grant="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/consent/grant" \
+grant_code="$(curl_json "$OUT/consent-grant.json" POST "$BASE/v1/consent/grant" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/amina\",\"capability\":[\"solum:consent:grant\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"scope\":[\"patient_summary\"]}")"
-gbody="$(echo "$grant" | sed '$d')"
-gcode="$(echo "$grant" | tail -n1)"
-echo "$gbody" >"$OUT/consent-grant.json"
-[[ "$gcode" == "200" || "$gcode" == "201" ]] || fail "consent grant expected 200/201 got $gcode: $gbody"
+[[ "$grant_code" == "200" || "$grant_code" == "201" ]] \
+  || fail "consent grant expected 200/201 got $grant_code: $(cat "$OUT/consent-grant.json")"
 ok "consent grant for encrypt path"
 
-# Allow encrypt (capability + consent + subject/purpose)
-allow="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/crypto/encrypt" \
+allow_code="$(curl_json "$OUT/encrypt-allow.json" POST "$BASE/v1/crypto/encrypt" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/amina\",\"capability\":[\"solum:crypto:encrypt\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"category\":\"patient_summary\",\"plaintext_base64\":\"SGVsbG8=\",\"key_ref\":\"ephemeral/demo\"}")"
-abody="$(echo "$allow" | sed '$d')"
-acode="$(echo "$allow" | tail -n1)"
-echo "$abody" >"$OUT/encrypt-allow.json"
-[[ "$acode" == "200" ]] || fail "encrypt allow expected 200 got $acode: $abody"
+[[ "$allow_code" == "200" ]] || fail "encrypt allow expected 200 got $allow_code: $(cat "$OUT/encrypt-allow.json")"
 ok "encrypt allow HTTP 200"
 
-# Deny encrypt (empty capabilities → authorization.denied)
-deny="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/crypto/encrypt" \
+deny_code="$(curl_json "$OUT/encrypt-deny.json" POST "$BASE/v1/crypto/encrypt" "${HDR[@]}" \
   -d "{\"actor\":\"intern/x\",\"capability\":[],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"category\":\"patient_summary\",\"plaintext_base64\":\"SGVsbG8=\",\"key_ref\":\"ephemeral/demo\"}")"
-dbody="$(echo "$deny" | sed '$d')"
-dcode="$(echo "$deny" | tail -n1)"
-echo "$dbody" >"$OUT/encrypt-deny.json"
-[[ "$dcode" == "403" ]] || fail "encrypt deny expected 403 got $dcode: $dbody"
-ok "encrypt deny HTTP 403"
+[[ "$deny_code" == "403" ]] || fail "encrypt deny expected 403 got $deny_code: $(cat "$OUT/encrypt-deny.json")"
+assert_json "$OUT/encrypt-deny.json" 'd.get("error") == "forbidden"' \
+  || fail "encrypt deny body must have error=forbidden"
+ok "encrypt deny HTTP 403 (empty capability[] — client-asserted, not RBAC)"
 
-# Confirm authorization.denied appears in audit export
-export2="$(curl -sS "${HDR[@]}" "$BASE/v1/audit/export")"
-echo "$export2" >"$OUT/audit-export-after-deny.json"
-echo "$export2" | grep -q 'authorization.denied' \
-  || fail "audit export missing authorization.denied after empty-capability encrypt"
+curl -sS "${GET_HDR[@]}" "$BASE/v1/audit/export" >"$OUT/audit-export-after-deny.json"
+python3 - "$OUT/audit-export-after-deny.json" <<'PY' || fail "audit export missing authorization.denied after empty-capability encrypt"
+import json, sys
+d = json.load(open(sys.argv[1]))
+types = [(r.get("event") or {}).get("event_type") for r in d.get("records") or []]
+if "authorization.denied" not in types:
+    sys.exit(1)
+PY
 ok "authorization.denied audited"
 
-# Tamper via harness + verify
-tamper="$(curl -sS -w "\n%{http_code}" -X POST "$BASE/demo/simulate-tampering" \
-  -H "Content-Type: application/json" -d '{}')"
-tbody="$(echo "$tamper" | sed '$d')"
-tcode="$(echo "$tamper" | tail -n1)"
-echo "$tbody" >"$OUT/tamper.json"
-[[ "$tcode" == "200" ]] || fail "harness tamper expected HTTP 200 got $tcode: $tbody"
-echo "$tbody" | grep -q '"ok"[[:space:]]*:[[:space:]]*true' \
-  || fail "harness tamper did not report ok: $tbody"
-# Require an actual mutation (or an already-tampered marker from a prior step).
-echo "$tbody" | grep -Eq '"already_tampered"[[:space:]]*:[[:space:]]*true|"tampered_actor"' \
-  || fail "harness tamper response missing mutation evidence: $tbody"
+tamper_code="$(curl_json "$OUT/tamper.json" POST "$BASE/demo/simulate-tampering" "${HDR[@]}" -d '{}')"
+[[ "$tamper_code" == "200" ]] || fail "harness tamper expected HTTP 200 got $tamper_code: $(cat "$OUT/tamper.json")"
+assert_json "$OUT/tamper.json" 'd.get("ok") is True' \
+  || fail "harness tamper did not report ok"
+assert_json "$OUT/tamper.json" 'd.get("already_tampered") is True or bool(d.get("tampered_actor"))' \
+  || fail "harness tamper response missing mutation evidence"
 ok "harness mutated audit.jsonl on shared volume"
 
-# Sidecar re-opens the file on each verify; brief retry covers volume visibility races.
 verify_ok=0
-vbody=""
 vcode=""
 for _try in 1 2 3 4 5; do
-  verify="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" "$BASE/v1/audit/verify")"
-  vbody="$(echo "$verify" | sed '$d')"
-  vcode="$(echo "$verify" | tail -n1)"
-  if echo "$vbody" | grep -qi "chain_broken\|broken\|error"; then
+  vcode="$(curl_json "$OUT/audit-verify.json" GET "$BASE/v1/audit/verify" "${GET_HDR[@]}")"
+  if python3 - "$OUT/audit-verify.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+sys.exit(0 if d.get("error") == "chain_broken" else 1)
+PY
+  then
     verify_ok=1
     break
   fi
   sleep 0.4
 done
-echo "$vbody" >"$OUT/audit-verify.json"
-[[ "$verify_ok" == "1" ]] || fail "expected chain_broken after tamper: $vbody"
-ok "audit verify reports chain break (HTTP $vcode)"
+[[ "$verify_ok" == "1" ]] || fail "expected error=chain_broken after tamper: $(cat "$OUT/audit-verify.json")"
+ok "audit verify reports chain_broken (HTTP $vcode)"
 echo "PASS stage1" | tee "$OUT/result.txt"
 exit 0

@@ -24,7 +24,7 @@ services:
     volumes:
       - solum-h3-sidecar-data:/data
     ports:
-      - "8787:8787"
+      - "127.0.0.1:8787:8787"
     depends_on:
       ehrbase:
         condition: service_healthy

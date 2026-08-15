@@ -1,5 +1,5 @@
-# Lightweight gate: shell syntax + Makefile present.
-# Full Stage-1 / H3 Docker smokes stay local (`make smoke-all`) — cold sidecar builds are too heavy for default PR CI.
+# Lightweight gate: pins, license, shell syntax, harness unit tests.
+# Full Stage-1 Docker smokes: smoke-stage1.yml (also on pull_request).
 name: smoke-syntax
 
 on:
@@ -8,30 +8,10 @@ on:
   pull_request:
 
 jobs:
-  bash-n:
+  check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Shell syntax
-        run: |
-          bash -n scripts/smoke-stage1.sh
-          bash -n scripts/smoke-consent.sh
-          bash -n scripts/smoke-h3.sh
-          bash -n scripts/smoke-profile-refuse.sh
-          bash -n scripts/smoke-fhir-ips.sh
-          bash -n scripts/smoke-migration-rehearsal.sh
-          bash -n scripts/smoke-claims-proof.sh
-      - name: Makefile / coverage / pin honesty
-        run: |
-          test -f Makefile
-          grep -q 'smoke-stage1' Makefile
-          grep -q 'smoke-h3' Makefile
-          grep -q 'smoke-fhir-ips' Makefile
-          grep -q 'smoke-consent' Makefile
-          test -f docs/COVERAGE.md
-          grep -q 'CLAIMS-PROOF-TRAIL' docs/COVERAGE.md
-          grep -q 'Solum-ref' PINNED_VERSIONS.txt
-          grep -q 'consent.denied' scripts/smoke-consent.sh
-          grep -q 'solum-audit-helios' scripts/smoke-stage1.sh
-          grep -q 'subject' scripts/smoke-stage1.sh
-          grep -q 'Deny B' dashboard/index.html
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: make check
+        run: make check

@@ -20,8 +20,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
-AUDIT_PATH = Path(os.environ.get("AUDIT_PATH", "/data/audit.jsonl"))
 BIND = os.environ.get("HARNESS_BIND", "0.0.0.0:8790")
+MAX_BODY = 4096
+TOKEN_HEADER = "X-Solum-Sidecar-Token"
+
+
+def audit_path() -> Path:
+    return Path(os.environ.get("AUDIT_PATH", "/data/audit.jsonl"))
+
+
+def expected_token() -> str:
+    return os.environ.get("SOLUM_SIDECAR_TOKEN", "solum-demo-local-token-not-for-production")
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, body: dict) -> None:
@@ -34,23 +43,24 @@ def _json_response(handler: BaseHTTPRequestHandler, status: int, body: dict) -> 
     handler.wfile.write(payload)
 
 
-def simulate_tampering() -> dict:
+def simulate_tampering(path: Path | None = None) -> dict:
     """
     Rewrite the first audit record's actor string in-place, matching the
     approach used in Solum's own FileAuditStore::detects_tampering unit test:
     alter event content without recomputing the hash chain.
     """
-    if not AUDIT_PATH.is_file():
+    target = path or audit_path()
+    if not target.is_file():
         return {
             "ok": False,
             "error": "audit_file_missing",
             "message": (
-                f"No audit file at {AUDIT_PATH}. Run Scenario 1 first so the "
+                f"No audit file at {target}. Run Scenario 1 first so the "
                 "sidecar has written at least one audit record."
             ),
         }
 
-    raw = AUDIT_PATH.read_text(encoding="utf-8")
+    raw = target.read_text(encoding="utf-8")
     lines = [ln for ln in raw.splitlines() if ln.strip()]
     if not lines:
         return {
@@ -84,7 +94,7 @@ def simulate_tampering() -> dict:
             "already_tampered": True,
             "message": "File already carries the demo tamper marker.",
             "actor": original_actor,
-            "path": str(AUDIT_PATH),
+            "path": str(target),
             "warning": (
                 "DEMO HARNESS — this mutation was applied outside solum-sidecar. "
                 "The product API has no tamper route."
@@ -105,7 +115,7 @@ def simulate_tampering() -> dict:
         lines[0] = json.dumps(first, separators=(",", ":"), ensure_ascii=False)
     payload = "\n".join(lines) + "\n"
     # fsync so the sidecar's subsequent verify sees the mutation on the shared volume
-    with AUDIT_PATH.open("w", encoding="utf-8") as fh:
+    with target.open("w", encoding="utf-8") as fh:
         fh.write(payload)
         fh.flush()
         os.fsync(fh.fileno())
@@ -113,7 +123,7 @@ def simulate_tampering() -> dict:
     return {
         "ok": True,
         "already_tampered": False,
-        "path": str(AUDIT_PATH),
+        "path": str(target),
         "original_actor": original_actor,
         "tampered_actor": tampered_actor,
         "seq": first.get("seq"),
@@ -135,6 +145,11 @@ class HarnessHandler(BaseHTTPRequestHandler):
     def log_message(self, fmt: str, *args) -> None:
         print(f"[demo-harness] {self.address_string()} {fmt % args}")
 
+    def _token_ok(self) -> bool:
+        provided = self.headers.get(TOKEN_HEADER, "")
+        expected = expected_token()
+        return bool(provided) and provided == expected
+
     def do_GET(self) -> None:
         path = urlparse(self.path).path
         if path in ("/demo/health", "/health", "/"):
@@ -144,10 +159,11 @@ class HarnessHandler(BaseHTTPRequestHandler):
                 {
                     "service": "solum-demo-harness",
                     "role": "DEMO_ONLY_NOT_SOLUM",
-                    "audit_path": str(AUDIT_PATH),
+                    "audit_path": str(audit_path()),
                     "endpoints": {
                         "POST /demo/simulate-tampering": (
-                            "Mutate audit.jsonl on the shared volume"
+                            "Mutate audit.jsonl on the shared volume "
+                            "(requires X-Solum-Sidecar-Token)"
                         )
                     },
                 },
@@ -158,7 +174,25 @@ class HarnessHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         path = urlparse(self.path).path
         if path in ("/demo/simulate-tampering", "/simulate-tampering"):
+            if not self._token_ok():
+                _json_response(
+                    self,
+                    401,
+                    {
+                        "ok": False,
+                        "error": "unauthorized",
+                        "message": f"missing or invalid {TOKEN_HEADER}",
+                    },
+                )
+                return
             length = int(self.headers.get("Content-Length", "0") or "0")
+            if length > MAX_BODY:
+                _json_response(
+                    self,
+                    413,
+                    {"ok": False, "error": "payload_too_large", "max_bytes": MAX_BODY},
+                )
+                return
             if length:
                 _ = self.rfile.read(length)
             result = simulate_tampering()
@@ -173,7 +207,7 @@ def main() -> None:
     port = int(port_s or "8790")
     print(
         "[demo-harness] DEMO ONLY — not part of Solum. "
-        f"Listening on {host}:{port}, AUDIT_PATH={AUDIT_PATH}"
+        f"Listening on {host}:{port}, AUDIT_PATH={audit_path()}"
     )
     httpd = ThreadingHTTPServer((host, port), HarnessHandler)
     httpd.serve_forever()

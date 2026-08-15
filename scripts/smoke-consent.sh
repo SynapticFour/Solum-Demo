@@ -3,9 +3,16 @@
 # Aligns with Solum claims A1-lite (HTTP) / A3 (consent.denied after revoke).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 BASE="${SOLUM_DEMO_BASE_URL:-http://127.0.0.1:8080}"
 TOKEN="${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}"
 HDR=(-H "X-Solum-Sidecar-Token: $TOKEN" -H "Content-Type: application/json")
+GET_HDR=(
+  -H "X-Solum-Sidecar-Token: $TOKEN"
+  -H "X-Solum-Actor: practitioner/smoke"
+  -H "X-Solum-Capability: solum:audit:export,solum:audit:verify,solum:consent:read"
+)
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-consent}"
 mkdir -p "$OUT"
 SUBJECT="patient/demo-smoke"
@@ -15,68 +22,66 @@ KEY_REF="ephemeral/demo-consent"
 fail() { echo "FAIL: $*" | tee "$OUT/result.txt"; exit 1; }
 ok() { echo "OK: $*" | tee -a "$OUT/result.txt"; }
 
-code="$(curl -sS -o /dev/null -w "%{http_code}" "${HDR[@]}" "$BASE/v1/audit/export" || true)"
+code="$(curl -sS -o /dev/null -w "%{http_code}" "${GET_HDR[@]}" "$BASE/v1/audit/export" || true)"
 [[ "$code" == "200" ]] || fail "sidecar not ready at $BASE — run: make up"
 
-grant="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/consent/grant" \
+gcode="$(curl_json "$OUT/grant.json" POST "$BASE/v1/consent/grant" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/smoke\",\"capability\":[\"solum:consent:grant\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"scope\":[\"patient_summary\"]}")"
-gbody="$(echo "$grant" | sed '$d')"
-gcode="$(echo "$grant" | tail -n1)"
-echo "$gbody" >"$OUT/grant.json"
-[[ "$gcode" == "200" || "$gcode" == "201" ]] || fail "consent grant expected 200/201 got $gcode: $gbody"
+[[ "$gcode" == "200" || "$gcode" == "201" ]] || fail "consent grant expected 200/201 got $gcode: $(cat "$OUT/grant.json")"
 ok "consent grant"
 
-status="$(curl -sS "${HDR[@]}" "$BASE/v1/consent/status?subject=$SUBJECT&purpose=$PURPOSE")"
-echo "$status" >"$OUT/status-granted.json"
-echo "$status" | grep -qi '"status"[[:space:]]*:[[:space:]]*"granted"' || fail "expected status=granted: $status"
+curl -sS "${GET_HDR[@]}" "$BASE/v1/consent/status?subject=$SUBJECT&purpose=$PURPOSE" \
+  >"$OUT/status-granted.json"
+assert_json "$OUT/status-granted.json" 'd.get("status") == "granted"' \
+  || fail "expected status=granted: $(cat "$OUT/status-granted.json")"
 ok "consent status granted"
 
-enc="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/crypto/encrypt" \
+ecode="$(curl_json "$OUT/encrypt.json" POST "$BASE/v1/crypto/encrypt" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/smoke\",\"capability\":[\"solum:crypto:encrypt\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"category\":\"patient_summary\",\"plaintext_base64\":\"ZGVuaS1i\",\"key_ref\":\"$KEY_REF\"}")"
-ebody="$(echo "$enc" | sed '$d')"
-ecode="$(echo "$enc" | tail -n1)"
-echo "$ebody" >"$OUT/encrypt.json"
-[[ "$ecode" == "200" ]] || fail "encrypt after grant expected 200 got $ecode: $ebody"
+[[ "$ecode" == "200" ]] || fail "encrypt after grant expected 200 got $ecode: $(cat "$OUT/encrypt.json")"
 ok "encrypt after grant"
 
-# Extract field JSON for decrypt (jq optional — use python)
-FIELD_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["field"]))' <<<"$ebody")" \
+FIELD_JSON="$(python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin)["field"]))' <"$OUT/encrypt.json")" \
   || fail "encrypt response missing field"
 
-dec_ok="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/crypto/decrypt" \
+dcode="$(curl_json "$OUT/decrypt-ok.json" POST "$BASE/v1/crypto/decrypt" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/smoke\",\"capability\":[\"solum:crypto:decrypt\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"key_ref\":\"$KEY_REF\",\"field\":$FIELD_JSON}")"
-dbody="$(echo "$dec_ok" | sed '$d')"
-dcode="$(echo "$dec_ok" | tail -n1)"
-echo "$dbody" >"$OUT/decrypt-ok.json"
-[[ "$dcode" == "200" ]] || fail "decrypt while granted expected 200 got $dcode: $dbody"
+[[ "$dcode" == "200" ]] || fail "decrypt while granted expected 200 got $dcode: $(cat "$OUT/decrypt-ok.json")"
 ok "decrypt while granted"
 
-revoke="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/consent/revoke" \
+rcode="$(curl_json "$OUT/revoke.json" POST "$BASE/v1/consent/revoke" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/smoke\",\"capability\":[\"solum:consent:revoke\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\"}")"
-rbody="$(echo "$revoke" | sed '$d')"
-rcode="$(echo "$revoke" | tail -n1)"
-echo "$rbody" >"$OUT/revoke.json"
-[[ "$rcode" == "200" || "$rcode" == "201" ]] || fail "consent revoke expected 200/201 got $rcode: $rbody"
+[[ "$rcode" == "200" || "$rcode" == "201" ]] || fail "consent revoke expected 200/201 got $rcode: $(cat "$OUT/revoke.json")"
 
-status2="$(curl -sS "${HDR[@]}" "$BASE/v1/consent/status?subject=$SUBJECT&purpose=$PURPOSE")"
-echo "$status2" >"$OUT/status-revoked.json"
-echo "$status2" | grep -Eqi '"status"[[:space:]]*:[[:space:]]*"(revoked|unknown)"' || fail "expected revoked/unknown: $status2"
+curl -sS "${GET_HDR[@]}" "$BASE/v1/consent/status?subject=$SUBJECT&purpose=$PURPOSE" \
+  >"$OUT/status-revoked.json"
+assert_json "$OUT/status-revoked.json" 'd.get("status") in ("revoked", "unknown")' \
+  || fail "expected revoked/unknown: $(cat "$OUT/status-revoked.json")"
 ok "consent revoke reflected"
 
-# Deny B: decrypt after revoke must fail (HTTP 400 + consent denied message) and audit
-dec_deny="$(curl -sS -w "\n%{http_code}" "${HDR[@]}" -X POST "$BASE/v1/crypto/decrypt" \
+ddcode="$(curl_json "$OUT/decrypt-after-revoke.json" POST "$BASE/v1/crypto/decrypt" "${HDR[@]}" \
   -d "{\"actor\":\"practitioner/smoke\",\"capability\":[\"solum:crypto:decrypt\"],\"subject\":\"$SUBJECT\",\"purpose\":\"$PURPOSE\",\"key_ref\":\"$KEY_REF\",\"field\":$FIELD_JSON}")"
-ddbody="$(echo "$dec_deny" | sed '$d')"
-ddcode="$(echo "$dec_deny" | tail -n1)"
-echo "$ddbody" >"$OUT/decrypt-after-revoke.json"
-[[ "$ddcode" != "200" ]] || fail "decrypt after revoke must not succeed: $ddbody"
-echo "$ddbody" | grep -qi 'consent' || fail "expected consent denial message: $ddbody"
+[[ "$ddcode" != "200" ]] || fail "decrypt after revoke must not succeed: $(cat "$OUT/decrypt-after-revoke.json")"
+[[ "$ddcode" == "400" || "$ddcode" == "403" ]] \
+  || fail "decrypt after revoke expected 400/403 got $ddcode: $(cat "$OUT/decrypt-after-revoke.json")"
+python3 - "$OUT/decrypt-after-revoke.json" <<'PY' || fail "expected consent denial message"
+import json, sys
+d = json.load(open(sys.argv[1]))
+msg = (d.get("message") or "").lower()
+err = (d.get("error") or "").lower()
+if "consent denied" not in msg and "consent.denied" not in msg and err != "consent.denied":
+    sys.exit(1)
+PY
 ok "Deny B — decrypt refused after revoke (HTTP $ddcode)"
 
-export_json="$(curl -sS "${HDR[@]}" "$BASE/v1/audit/export")"
-echo "$export_json" >"$OUT/audit-export.json"
-echo "$export_json" | grep -q 'consent.denied' \
-  || fail "audit export missing consent.denied after Deny B"
+curl -sS "${GET_HDR[@]}" "$BASE/v1/audit/export" >"$OUT/audit-export.json"
+python3 - "$OUT/audit-export.json" <<'PY' || fail "audit export missing consent.denied after Deny B"
+import json, sys
+d = json.load(open(sys.argv[1]))
+types = [(r.get("event") or {}).get("event_type") for r in d.get("records") or []]
+if "consent.denied" not in types:
+    sys.exit(1)
+PY
 ok "consent.denied audited"
 
 echo "PASS consent" | tee "$OUT/result.txt"

@@ -1,16 +1,19 @@
 # DEMO HARNESS — Solum-Demo only.
 # This image is NOT Solum and must never be copied into the Solum product repo.
-# It exists solely so Scenario 2 can mutate audit.jsonl on the shared volume
-# without giving the sidecar a tamper HTTP endpoint (that would be a security
-# anti-feature in the real product).
+# uid 10001 matches the sidecar so rewriting audit.jsonl does not steal ownership.
 
-FROM python:3.12-slim
+FROM python:3.12-slim-bookworm
 
 WORKDIR /app
 COPY server.py /app/server.py
 
+RUN useradd --system --uid 10001 --home /nonexistent --shell /usr/sbin/nologin solum \
+    && mkdir -p /data \
+    && chown solum:solum /data /app
+
 ENV AUDIT_PATH=/data/audit.jsonl \
     HARNESS_BIND=0.0.0.0:8790
 
+USER solum
 EXPOSE 8790
 CMD ["python", "-u", "/app/server.py"]

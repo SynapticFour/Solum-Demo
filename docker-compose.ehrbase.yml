@@ -4,7 +4,8 @@
 #
 # Usage:
 #   docker compose -f docker-compose.ehrbase.yml up -d
-# EHRbase on host :8081 (avoids clash with Stage-1 dashboard :8080).
+# EHRbase on loopback 127.0.0.1:8081 (avoids clash with Stage-1 dashboard :8080).
+# Password env defaults changed 2026-08-15 — `make down-h3` to wipe old volumes.
 #
 # Optional Track B sidecar: also -f docker-compose.ehrbase-sidecar.yml --profile h3-sidecar
 
@@ -13,11 +14,11 @@ services:
     image: ehrbase/ehrbase-v2-postgres:16.2
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${SOLUM_H3_POSTGRES_PASSWORD:-ehrbase-demo-not-for-production}
       EHRBASE_USER_ADMIN: ehrbase
-      EHRBASE_PASSWORD_ADMIN: ehrbase
+      EHRBASE_PASSWORD_ADMIN: ${SOLUM_H3_EHRBASE_ADMIN_PASSWORD:-ehrbase-demo-not-for-production}
       EHRBASE_USER: ehrbase_restricted
-      EHRBASE_PASSWORD: ehrbase_restricted
+      EHRBASE_PASSWORD: ${SOLUM_H3_EHRBASE_PASSWORD:-ehrbase-restricted-demo-not-for-production}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -35,9 +36,9 @@ services:
       SERVER_NODENAME: local.ehrbase.org
       DB_URL: jdbc:postgresql://ehrdb:5432/ehrbase
       DB_USER_ADMIN: ehrbase
-      DB_PASS_ADMIN: ehrbase
+      DB_PASS_ADMIN: ${SOLUM_H3_EHRBASE_ADMIN_PASSWORD:-ehrbase-demo-not-for-production}
       DB_USER: ehrbase_restricted
-      DB_PASS: ehrbase_restricted
+      DB_PASS: ${SOLUM_H3_EHRBASE_PASSWORD:-ehrbase-restricted-demo-not-for-production}
       MANAGEMENT_ENDPOINTS_WEB_EXPOSURE: health,info
       MANAGEMENT_ENDPOINTS_WEB_BASEPATH: /management
       MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
@@ -45,7 +46,7 @@ services:
       ehrdb:
         condition: service_healthy
     ports:
-      - "8081:8080"
+      - "127.0.0.1:8081:8080"
     healthcheck:
       test:
         [

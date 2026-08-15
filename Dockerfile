@@ -1,10 +1,11 @@
 # Builds solum-sidecar from a pinned Solum git commit (not floating main).
 # Pin is documented in PINNED_VERSIONS.txt (Solum-ref) and must include
-# consent-gated crypto (subject/purpose on encrypt/decrypt).
+# consent-gated crypto (subject/purpose on encrypt/decrypt) plus GET
+# /v1/audit/* capability checks (X-Solum-Actor / X-Solum-Capability).
 #
 # Local sibling alternative: make up-sibling (Dockerfile.sibling + ../Solum).
 
-ARG SOLUM_REF=e17630af7aed577ed3d6a68448f2db114a3f8ceb
+ARG SOLUM_REF=6b4519c98f5c1e905ab5cf3f517787021d1e2604
 ARG RUST_VERSION=1.91.1
 
 FROM rust:${RUST_VERSION}-bookworm AS builder
@@ -35,6 +36,7 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
+        curl \
         libsodium23 \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --system --uid 10001 --home /nonexistent --shell /usr/sbin/nologin solum

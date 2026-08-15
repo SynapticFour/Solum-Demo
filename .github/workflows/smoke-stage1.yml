@@ -1,15 +1,15 @@
 # Live Stage-1 stack: build pinned sidecar, run authz + audit + consent smokes.
-# Cold Rust compile is slow — reserved for main pushes and manual runs (no weekly schedule).
-# PR default gate remains smoke-syntax.yml.
+# Runs on pull_request so a broken proof dies before merge (cold Rust compile ~5–45 min).
 name: smoke-stage1
 
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch:
 
 concurrency:
-  group: smoke-stage1-${{ github.ref }}
+  group: smoke-stage1-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -17,15 +17,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Bring up Stage-1
         run: |
-          docker compose up --build -d
-          # Wait for nginx → sidecar audit export AND demo harness health
+          make up
           for i in $(seq 1 90); do
             code=$(curl -sS -o /dev/null -w '%{http_code}' \
-              -H 'X-Solum-Sidecar-Token: solum-demo-local-token-not-for-production' \
+              -H 'X-Solum-Actor: practitioner/amina' \
+              -H 'X-Solum-Capability: solum:audit:export' \
               http://127.0.0.1:8080/v1/audit/export || echo 000)
             harness=$(curl -sS -o /dev/null -w '%{http_code}' \
               http://127.0.0.1:8080/demo/health || echo 000)
@@ -39,11 +39,8 @@ jobs:
           docker compose logs --tail=80
           exit 1
 
-      - name: smoke-stage1
-        run: make smoke-stage1
-
-      - name: smoke-consent
-        run: make smoke-consent
+      - name: smoke-ci
+        run: make smoke-ci
 
       - name: Teardown
         if: always()
