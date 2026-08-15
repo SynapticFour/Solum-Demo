@@ -18,7 +18,7 @@ Local developer walkthrough of Solum Stage-1. **Not** a customer evaluation. See
 ```bash
 make check          # pin drift, LICENSE, bash -n, harness unit tests
 make up             # or up-sibling
-make smoke-ci       # stage1 + consent
+make smoke-ci       # consent then stage1 (tamper last)
 ```
 
 Sibling/H3 proofs: `make smoke-all` (skips are failures).

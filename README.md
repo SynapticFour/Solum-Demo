@@ -19,7 +19,7 @@ git clone https://github.com/SynapticFour/Solum-Demo.git
 cd Solum-Demo
 make up          # reads Solum-ref from PINNED_VERSIONS.txt
 # open http://127.0.0.1:8080  (loopback only)
-make smoke-ci    # smoke-stage1 + smoke-consent
+make smoke-ci    # smoke-consent then smoke-stage1 (tamper last)
 ```
 
 While developing Solum beside this repo, prefer the sibling build (current `../Solum` tree, **not** the pin):
@@ -57,7 +57,7 @@ make check       # pin drift, LICENSE, bash -n, harness unit tests
 | `smoke-fhir-ips` | `solum fhir export-ips` + structural checks **on that file** | sibling `../Solum` |
 | `smoke-migration` | Prefer/Cut-over **tooling** dry rehearsal | sibling `../Solum` |
 | `smoke-claims-proof` | Solum `./scripts/demo-claims-proof.sh` one-shot | sibling `../Solum` |
-| `smoke-ci` | stage1 + consent | stack up |
+| `smoke-ci` | consent then stage1 (tamper last) | stack up |
 | `smoke-all` | all of the above; sibling/H3 **skip = fail** | pin stack + sibling + H3 |
 
 Ecosystem integrations **not** in this repo (Showcase):
