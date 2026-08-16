@@ -30,7 +30,10 @@ def audit_path() -> Path:
 
 
 def expected_token() -> str:
-    return os.environ.get("SOLUM_SIDECAR_TOKEN", "solum-demo-local-token-not-for-production")
+    token = os.environ.get("SOLUM_SIDECAR_TOKEN")
+    if not token:
+        raise RuntimeError("SOLUM_SIDECAR_TOKEN is required")
+    return token
 
 
 def _json_response(handler: BaseHTTPRequestHandler, status: int, body: dict) -> None:

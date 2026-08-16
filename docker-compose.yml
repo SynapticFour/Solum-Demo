@@ -21,7 +21,7 @@ services:
         SOLUM_REF: ${SOLUM_REF:-v0.1.0}
         RUST_VERSION: "1.91.1"
     environment:
-      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
+      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:?set SOLUM_SIDECAR_TOKEN via .env}
       SOLUM_ALLOW_EPHEMERAL: "1"
       # Pin 6b4519c+ refuses non-loopback HTTP unless this is set (dev-local Docker eval only).
       SOLUM_ALLOW_PLAINTEXT_HTTP: "1"
@@ -58,7 +58,7 @@ services:
     environment:
       AUDIT_PATH: /data/audit.jsonl
       HARNESS_BIND: 0.0.0.0:8790
-      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
+      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:?set SOLUM_SIDECAR_TOKEN via .env}
     volumes:
       - solum-demo-data:/data
     expose:
@@ -75,7 +75,7 @@ services:
   dashboard:
     image: nginx:1.27-alpine@sha256:65645c7bb6a0661892a8b03b89d0743208a18dd2f3f17a54ef4b76fb8e2f2a10
     environment:
-      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
+      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:?set SOLUM_SIDECAR_TOKEN via .env}
     command:
       - /bin/sh
       - -c

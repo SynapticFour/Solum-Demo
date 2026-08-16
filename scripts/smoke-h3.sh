@@ -8,7 +8,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # shellcheck source=lib-smoke.sh
 source "$ROOT/scripts/lib-smoke.sh"
 BASE="${SOLUM_H3_BASE_URL:-http://127.0.0.1:8787}"
-TOKEN="${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}"
+TOKEN="$(load_sidecar_token)"
 HDR=(-H "X-Solum-Sidecar-Token: $TOKEN" -H "Content-Type: application/json")
 GET_HDR=(
   -H "X-Solum-Sidecar-Token: $TOKEN"

@@ -1,6 +1,19 @@
 # Shared helpers for Solum-Demo smoke scripts. Sourced, not executed.
 # Requires: fail() and ok() defined by the caller.
 
+load_sidecar_token() {
+  local default='solum-demo-local-token-not-for-production'
+  local token="${SOLUM_SIDECAR_TOKEN:-}"
+  if [ -z "$token" ] && [ -f "${ROOT}/.env" ]; then
+    token="$(sed -n 's/^SOLUM_SIDECAR_TOKEN=//p' "${ROOT}/.env" | tail -1)"
+  fi
+  if [ -z "$token" ] || [ "$token" = "$default" ]; then
+    echo "SOLUM_SIDECAR_TOKEN missing or is the retired default. Run make up." >&2
+    exit 1
+  fi
+  printf '%s' "$token"
+}
+
 json_get() {
   # json_get FIELD [default]  — reads JSON on stdin, prints field or default.
   local field="$1"

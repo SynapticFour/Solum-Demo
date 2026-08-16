@@ -97,7 +97,7 @@ Encrypt while granted → revoke → decrypt must fail; watch `consent.denied` i
 | `dashboard` | nginx `127.0.0.1:8080` → UI + `/v1` + `/demo`; injects sidecar token |
 | `demo-harness` | Demo-only audit tamper (**not** Solum), uid 10001, token on POST |
 
-Default token (compose/env only, not in the HTML): `solum-demo-local-token-not-for-production` (`X-Solum-Sidecar-Token`).
+Host bind is loopback (`127.0.0.1:8080`). `make up` writes a random `SOLUM_SIDECAR_TOKEN` to `.env` (gitignored). There is no shared default token in the compose file. nginx injects `X-Solum-Sidecar-Token`; the dashboard JS does not contain it.
 
 ### Three binaries (do not confuse)
 

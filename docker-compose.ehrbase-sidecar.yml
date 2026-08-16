@@ -13,7 +13,7 @@ services:
       context: ../Solum
       dockerfile: deploy/h3-ehrbase/Dockerfile.sidecar
     environment:
-      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}
+      SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:?set SOLUM_SIDECAR_TOKEN via .env}
       SOLUM_ALLOW_EPHEMERAL: "1"
       SOLUM_ALLOW_PLAINTEXT_HTTP: "1"
       SOLUM_PROFILE: /etc/solum/dev-local.toml

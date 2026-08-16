@@ -71,6 +71,15 @@ class TamperTests(unittest.TestCase):
 
 
 class TokenTests(unittest.TestCase):
+    def test_expected_token_required(self) -> None:
+        old = os.environ.pop("SOLUM_SIDECAR_TOKEN", None)
+        try:
+            with self.assertRaises(RuntimeError):
+                server.expected_token()
+        finally:
+            if old is not None:
+                os.environ["SOLUM_SIDECAR_TOKEN"] = old
+
     def test_expected_token_env(self) -> None:
         old = os.environ.get("SOLUM_SIDECAR_TOKEN")
         os.environ["SOLUM_SIDECAR_TOKEN"] = "unit-test-token"

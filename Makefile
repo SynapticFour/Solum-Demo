@@ -27,10 +27,14 @@ help:
 
 up:
 	@test -n "$(SOLUM_REF)" || (echo "PINNED_VERSIONS.txt missing Solum-ref"; exit 1)
-	SOLUM_REF="$(SOLUM_REF)" docker compose up --build -d || { docker compose logs sidecar --tail=80; exit 1; }
+	@chmod +x scripts/ensure-demo-secrets.sh
+	@./scripts/ensure-demo-secrets.sh
+	SOLUM_REF="$(SOLUM_REF)" docker compose --env-file .env up --build -d || { docker compose logs sidecar --tail=80; exit 1; }
 
 up-sibling:
-	docker compose -f docker-compose.yml -f docker-compose.sibling.yml up --build -d
+	@chmod +x scripts/ensure-demo-secrets.sh
+	@./scripts/ensure-demo-secrets.sh
+	docker compose --env-file .env -f docker-compose.yml -f docker-compose.sibling.yml up --build -d
 
 down:
 	docker compose down
@@ -39,7 +43,9 @@ reset:
 	docker compose down -v
 
 up-h3:
-	docker compose -f docker-compose.ehrbase.yml -f docker-compose.ehrbase-sidecar.yml \
+	@chmod +x scripts/ensure-demo-secrets.sh
+	@./scripts/ensure-demo-secrets.sh
+	docker compose --env-file .env -f docker-compose.ehrbase.yml -f docker-compose.ehrbase-sidecar.yml \
 		--profile h3-sidecar up --build -d
 
 down-h3:
@@ -52,6 +58,7 @@ check:
 	  grep -F "$$pin" Dockerfile >/dev/null; \
 	  grep -F "$$pin" docker-compose.yml >/dev/null; \
 	  test -f LICENSE; test -f NOTICE
+	bash -n scripts/ensure-demo-secrets.sh
 	bash -n scripts/lib-smoke.sh
 	bash -n scripts/smoke-stage1.sh
 	bash -n scripts/smoke-consent.sh
