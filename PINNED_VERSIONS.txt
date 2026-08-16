@@ -3,9 +3,9 @@
 # must match; CI fails if they drift).
 
 # Product commit consumed by Dockerfile / docker-compose.yml
-# (Stage-1 interactive + smoke-stage1 / smoke-consent).
-# Must equal Solum docs/BASELINE.md "Verified commit".
-Solum-ref=6b4519c98f5c1e905ab5cf3f517787021d1e2604
+# Tag v0.1.0 (4c599c6ecd709ba4ee2d7e042f900e8ebe7b4ac5). Push Solum before
+# `make up` on a clone that fetches from origin.
+Solum-ref=v0.1.0
 
 # Optional local sibling build: `make up-sibling` (docker-compose.sibling.yml)
 # builds ../Solum instead of cloning Solum-ref — use while developing Solum+Demo

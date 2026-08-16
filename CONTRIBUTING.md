@@ -28,4 +28,4 @@ Sibling/H3 proofs: `make smoke-all` (skips are failures).
 - Do not claim physician/intern RBAC. Empty `capability[]` deny is the claim.
 - Do not claim dual-write writes EHRbase compositions. `link_cdr=true` is refused.
 - Do not leave `docs/COVERAGE.md` describing a workflow that does not exist.
-- Bumping Solum: change `Solum-ref` in `PINNED_VERSIONS.txt` **and** the default SHA in `Dockerfile` / `docker-compose.yml` (CI asserts they match). The SHA must equal Solum `docs/BASELINE.md` Verified commit, or the pin comment must say it does not.
+- Bumping Solum: change `Solum-ref` in `PINNED_VERSIONS.txt` **and** the default ref in `Dockerfile` / `docker-compose.yml` (CI asserts they match). Prefer the Solum git tag (`v0.1.0`). The peel must equal Solum `docs/BASELINE.md` Verified commit, or the pin comment must say it does not.

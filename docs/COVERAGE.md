@@ -5,7 +5,7 @@
 
 **Not a customer evaluation.** Stage-1 uses Solum `dev-local.toml` (ephemeral keys, client-asserted `capability[]`). Solum’s own profile text forbids that posture for customer evaluations. Pilot org-IAM is out of scope here.
 
-**Pins:** [`PINNED_VERSIONS.txt`](../PINNED_VERSIONS.txt) is the source of truth (`make up` exports `Solum-ref`). That SHA must equal Solum [`docs/BASELINE.md`](https://github.com/SynapticFour/Solum/blob/main/docs/BASELINE.md) **Verified commit**. H3 builds local `../Solum`, which is a **different binary** from Stage-1. Image policy: [`IMAGE-PIN-POLICY.md`](IMAGE-PIN-POLICY.md).
+**Pins:** [`PINNED_VERSIONS.txt`](../PINNED_VERSIONS.txt) is the source of truth (`make up` exports `Solum-ref`). That ref must equal Solum [`docs/BASELINE.md`](https://github.com/SynapticFour/Solum/blob/main/docs/BASELINE.md) **Verified commit** / tag **v0.1.0**. H3 builds local `../Solum`, which is a **different binary** from Stage-1. Image policy: [`IMAGE-PIN-POLICY.md`](IMAGE-PIN-POLICY.md).
 
 **Master claim map (product):** [Solum CLAIMS-PROOF-TRAIL.md](https://github.com/SynapticFour/Solum/blob/main/docs/CLAIMS-PROOF-TRAIL.md)
 

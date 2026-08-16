@@ -18,7 +18,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        SOLUM_REF: ${SOLUM_REF:-6b4519c98f5c1e905ab5cf3f517787021d1e2604}
+        SOLUM_REF: ${SOLUM_REF:-v0.1.0}
         RUST_VERSION: "1.91.1"
     environment:
       SOLUM_SIDECAR_TOKEN: ${SOLUM_SIDECAR_TOKEN:-solum-demo-local-token-not-for-production}

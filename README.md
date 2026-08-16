@@ -18,7 +18,7 @@ Scope decision: [`docs/adr/0001-demo-scope.md`](docs/adr/0001-demo-scope.md).
 ```bash
 git clone https://github.com/SynapticFour/Solum-Demo.git
 cd Solum-Demo
-make up          # reads Solum-ref from PINNED_VERSIONS.txt
+make up          # Solum-ref=v0.1.0 from PINNED_VERSIONS.txt (tag must exist on origin)
 # open http://127.0.0.1:8080  (loopback only)
 make smoke-ci    # smoke-consent then smoke-stage1 (tamper last)
 ```

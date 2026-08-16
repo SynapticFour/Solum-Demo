@@ -5,7 +5,7 @@
 #
 # Local sibling alternative: make up-sibling (Dockerfile.sibling + ../Solum).
 
-ARG SOLUM_REF=6b4519c98f5c1e905ab5cf3f517787021d1e2604
+ARG SOLUM_REF=v0.1.0
 ARG RUST_VERSION=1.91.1
 
 FROM rust:${RUST_VERSION}-bookworm AS builder
