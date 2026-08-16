@@ -150,3 +150,7 @@ Demo scaffolding (this repository’s Compose, UI, harness, smokes, docs) is **A
 The sidecar **image contains Solum**, which is **Business Source License 1.1** — not Apache-2.0. See [NOTICE](NOTICE) and [SynapticFour/Solum LICENSE](https://github.com/SynapticFour/Solum/blob/main/LICENSE).
 
 Contact: [synapticfour.com](https://synapticfour.com)
+
+---
+
+**Synaptic Four** · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com) · this repo Apache-2.0; Solum sidecar BUSL-1.1
