@@ -6,11 +6,12 @@
 # it for customer evaluations — this compose file is the matching local
 # developer walkthrough, not a pilot.
 #
-# Bind: 127.0.0.1 on the host. Sidecar listens 0.0.0.0 inside the compose
-# network, which Solum 6b4519c+ allows only with SOLUM_ALLOW_PLAINTEXT_HTTP=1
-# (dev-local eval). nginx injects X-Solum-Sidecar-Token so the UI source
-# does not contain the secret. The demo-harness mutates audit.jsonl on the
-# filesystem (DEMO ONLY — never part of Solum).
+# Host ports bind 127.0.0.1 only. Sidecar/harness listen 0.0.0.0 inside the
+# compose network (not on the host). Solum 6b4519c+ allows that plaintext
+# only with SOLUM_ALLOW_PLAINTEXT_HTTP=1 (dev-local). This is not TLS.
+# nginx injects X-Solum-Sidecar-Token so the UI source does not contain the
+# secret. The demo-harness mutates audit.jsonl on the filesystem (DEMO ONLY
+# — never part of Solum).
 
 services:
   sidecar:
