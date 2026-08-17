@@ -1,6 +1,21 @@
 # Shared helpers for Solum-Demo smoke scripts. Sourced, not executed.
 # Requires: fail() and ok() defined by the caller.
 
+# Skip-as-fail by default (suite 2026.08-draft). Set SOLUM_DEMO_ALLOW_SKIP=1
+# for a laptop without sibling/H3. An explicit SOLUM_DEMO_*_REQUIRE=0|1 wins.
+solum_demo_require() {
+  local explicit="${1-}"
+  if [[ -n "${explicit}" ]]; then
+    printf '%s\n' "${explicit}"
+    return 0
+  fi
+  if [[ "${SOLUM_DEMO_ALLOW_SKIP:-0}" == "1" ]]; then
+    printf '0\n'
+  else
+    printf '1\n'
+  fi
+}
+
 load_sidecar_token() {
   local default='solum-demo-local-token-not-for-production'
   local token="${SOLUM_SIDECAR_TOKEN:-}"

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Profile refuse + Kenya transfer fail-closed (sibling Solum).
-# Soft-skip if ../Solum missing unless SOLUM_DEMO_PROFILE_REQUIRE=1.
+# Skip is a failure unless SOLUM_DEMO_ALLOW_SKIP=1 or SOLUM_DEMO_PROFILE_REQUIRE=0.
 # Aligns with Solum claims A7 / A8.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 SOLUM_ROOT="${SOLUM_ROOT:-$ROOT/../Solum}"
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-profile}"
-REQUIRE="${SOLUM_DEMO_PROFILE_REQUIRE:-0}"
+REQUIRE="$(solum_demo_require "${SOLUM_DEMO_PROFILE_REQUIRE:-}")"
 mkdir -p "$OUT"
 
 skip() {

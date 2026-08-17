@@ -3,9 +3,11 @@
 # (Track A CLI + FHIR structural + Kenya). Soft-skip if ../Solum missing.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 SOLUM_ROOT="${SOLUM_ROOT:-$ROOT/../Solum}"
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-claims-proof}"
-REQUIRE="${SOLUM_DEMO_CLAIMS_REQUIRE:-0}"
+REQUIRE="$(solum_demo_require "${SOLUM_DEMO_CLAIMS_REQUIRE:-}")"
 mkdir -p "$OUT"
 
 skip() {

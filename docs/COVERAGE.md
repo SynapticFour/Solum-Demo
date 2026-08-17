@@ -24,7 +24,7 @@
 | Migration Prefer/Cut-over **tooling** dry run | A15 | Solum rehearsal script | `make smoke-migration` |
 | Full Track A claims one-shot | A1–A8+ | Solum `demo-claims-proof.sh` | `make smoke-claims-proof` |
 
-`make smoke-all` sets `*_REQUIRE=1` for every sibling/H3 smoke: a skip is a **failure**. Individual smokes still skip when the stack is absent so a laptop without EHRbase can run Stage-1 only.
+`make smoke-all` sets `*_REQUIRE=1` for every sibling/H3 smoke: a skip is a **failure**. Individual smokes also **fail on skip by default** (suite 2026.08-draft). Laptop without EHRbase/sibling: `SOLUM_DEMO_ALLOW_SKIP=1` or `SOLUM_DEMO_*_REQUIRE=0`.
 
 ## Forbidden claims (do not say in demos)
 

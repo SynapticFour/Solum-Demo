@@ -13,7 +13,7 @@ help:
 	@echo "  make down / reset       Stop / wipe volumes"
 	@echo "  make smoke-stage1       Authz deny + HELIOS envelope + audit tamper (needs up)"
 	@echo "  make smoke-consent      Consent + Deny B decrypt-after-revoke (needs up)"
-	@echo "  make up-h3 / smoke-h3   Track B EHRbase evidence (REQUIRE=1 fails if down)"
+	@echo "  make smoke-h3           Track B EHRbase evidence (skip = fail unless ALLOW_SKIP=1)"
 	@echo "  make smoke-profile      kenya/eu refuse + transfer unit (../Solum)"
 	@echo "  make smoke-fhir-ips     solum fhir export-ips + structural (../Solum)"
 	@echo "  make smoke-migration    Prefer/Cut-over dry rehearsal (../Solum)"

@@ -3,8 +3,8 @@
 # must match; CI fails if they drift).
 
 # Product commit consumed by Dockerfile / docker-compose.yml
-# Tag v0.1.0 (4c599c6ecd709ba4ee2d7e042f900e8ebe7b4ac5). Push Solum before
-# `make up` on a clone that fetches from origin.
+# Tag v0.1.0 peels to b68a941ff1cc9a2406f25b27fed8f12368ebbf1b (do not cite a different peel).
+# Push Solum before `make up` on a clone that fetches from origin.
 Solum-ref=v0.1.0
 
 # Optional local sibling build: `make up-sibling` (docker-compose.sibling.yml)

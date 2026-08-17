@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Wrap Solum migration Prefer/Cut-over dry rehearsal tooling.
-# Soft-skip if ../Solum missing unless SOLUM_DEMO_MIGRATION_REQUIRE=1.
+# Soft-skip only if SOLUM_DEMO_ALLOW_SKIP=1 or SOLUM_DEMO_MIGRATION_REQUIRE=0.
 # Aligns with Solum claim A15 (tooling only — not live partner cut-over).
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 SOLUM_ROOT="${SOLUM_ROOT:-$ROOT/../Solum}"
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-migration}"
-REQUIRE="${SOLUM_DEMO_MIGRATION_REQUIRE:-0}"
+REQUIRE="$(solum_demo_require "${SOLUM_DEMO_MIGRATION_REQUIRE:-}")"
 mkdir -p "$OUT"
 
 skip() {

@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # Structural check of `solum fhir export-ips` output — does NOT re-export via
 # solum-example-fhir-ips-export. Optional HL7 JAR runs against the same file.
-# Soft-skip if ../Solum missing unless SOLUM_DEMO_FHIR_REQUIRE=1.
+# Soft-skip only if SOLUM_DEMO_ALLOW_SKIP=1 or SOLUM_DEMO_FHIR_REQUIRE=0.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=lib-smoke.sh
+source "$ROOT/scripts/lib-smoke.sh"
 SOLUM_ROOT="${SOLUM_ROOT:-$ROOT/../Solum}"
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-fhir-ips}"
-REQUIRE="${SOLUM_DEMO_FHIR_REQUIRE:-0}"
+REQUIRE="$(solum_demo_require "${SOLUM_DEMO_FHIR_REQUIRE:-}")"
 mkdir -p "$OUT"
 
 skip() {

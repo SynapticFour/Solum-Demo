@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # H3 Track B smoke against sidecar-h3 (:8787) + EHRbase.
-# Soft-skip (exit 0) when stack is down unless SOLUM_DEMO_H3_REQUIRE=1.
+# Skip is a failure unless SOLUM_DEMO_ALLOW_SKIP=1 or SOLUM_DEMO_H3_REQUIRE=0.
 # Dual-write: façade persist (link_cdr=false) + example-CDR refuse (link_cdr=true → 202 dead-letter).
 # This does NOT prove a live Prefer dual-write into EHRbase compositions.
 set -euo pipefail
@@ -18,7 +18,7 @@ GET_HDR=(
   -H "X-Solum-Purpose: care_provision"
 )
 OUT="${SOLUM_DEMO_SMOKE_OUT:-$ROOT/artifacts/smoke-h3}"
-REQUIRE="${SOLUM_DEMO_H3_REQUIRE:-0}"
+REQUIRE="$(solum_demo_require "${SOLUM_DEMO_H3_REQUIRE:-}")"
 ACTOR='practitioner/h3'
 SUBJECT='h3-demo-patient'
 PURPOSE='care_provision'
