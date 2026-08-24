@@ -25,3 +25,5 @@ UI: http://127.0.0.1:8080 (loopback only). Sibling Solum tree: `make up-sibling`
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE). Solum itself is BUSL-1.1.
+
+**Synaptic Four** · [contact@synapticfour.com](mailto:contact@synapticfour.com) · [synapticfour.com](https://synapticfour.com)
