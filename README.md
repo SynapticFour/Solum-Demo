@@ -1,5 +1,8 @@
 # Solum Demo
 
+Freeze status (2026-09): [STATUS.md](STATUS.md).
+
+
 **Reference / demo** — not a product, not a customer evaluation, not a production environment. Local developer walkthrough of [Solum](https://github.com/SynapticFour/Solum).
 
 Uses Solum `dev-local.toml` (ephemeral keys; client-asserted `capability[]`). Solum’s own profile forbids that posture for customer evaluations. Pilot org-IAM lives in Solum tests / Showcase, not here. Persona: [`docs/PERSONA.md`](docs/PERSONA.md).
