@@ -1,6 +1,6 @@
 # Solum Demo
 
-**Reference / demo** — not a product, not a customer evaluation, not a production environment. Local developer walkthrough of [Solum](https://github.com/SynapticFour/Solum).
+A local walkthrough of [Solum](https://github.com/SynapticFour/Solum) so you can try Stage-1 consent and audit on a laptop.
 
 Uses Solum `dev-local.toml` (ephemeral keys; client-asserted `capability[]`). Solum’s own profile forbids that posture for customer evaluations. Pilot org-IAM lives in Solum tests / Showcase, not here. Persona: [`docs/PERSONA.md`](docs/PERSONA.md).
 
