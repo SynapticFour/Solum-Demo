@@ -1,6 +1,6 @@
 # Solum Demo
 
-Freeze status (2026-09): [STATUS.md](STATUS.md).
+Status: [STATUS.md](STATUS.md).
 
 
 **Reference / demo** — not a product, not a customer evaluation, not a production environment. Local developer walkthrough of [Solum](https://github.com/SynapticFour/Solum).
